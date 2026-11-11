@@ -123,11 +123,36 @@ http://localhost:3000
 
 Every AI operation (branching, crossing, jury scoring, summarizing, and web scout analysis) requires an LLM.
 
-### Hosted Providers
+### Free & Low-Cost Providers (OpenRouter Free & Gemini Free)
+
+You do not need to use expensive models like Claude Sonnet. You have two excellent free cloud options:
+
+#### Option 1: OpenRouter Free Models
+OpenRouter provides many capable models that are **100% free** (indicated by `:free` in their model ID):
+1. Sign up for a free account at [openrouter.ai](https://openrouter.ai) and create a free key at [openrouter.ai/keys](https://openrouter.ai/keys).
+2. In Idégeneratorn, open **App Settings (🔑)** and paste your OpenRouter key.
+3. In **Board Settings (⚙)** or **App Settings (🔑)**, set the models for roles (Distill, Expand, Combine, Judge) to any of OpenRouter's free models:
+   - `openrouter:google/gemini-2.0-flash-exp:free` *(Fast and highly intelligent)*
+   - `openrouter:meta-llama/llama-3.3-70b-instruct:free` *(State of the art open weights)*
+   - `openrouter:qwen/qwen-2.5-72b-instruct:free` *(Excellent reasoning)*
+   - `openrouter:deepseek/deepseek-chat:free`
+   - `openrouter:mistralai/mistral-7b-instruct:free`
+
+#### Option 2: Google Gemini (Free Tier API Key)
+Google provides a generous free tier directly via Google AI Studio:
+1. Go to [aistudio.google.com](https://aistudio.google.com/) and click **Get API key** (free, no credit card required).
+2. In Idégeneratorn, click the **🔑 (App Settings)** icon.
+3. Find **Google Gemini** in the list, paste your Gemini API key, and click **Test (`…`)**.
+4. In **Board Settings (⚙)**, set the roles to:
+   - `gemini:gemini-2.5-flash` *(Recommended: exceptionally fast and smart)*
+   - `gemini:gemini-2.0-flash`
+   - `gemini:gemini-1.5-flash`
+
+### Hosted Paid Providers (Optional)
 
 1. In the top-right corner of the app header, click the **🔑 (App Settings)** button.
 2. Enter your API key for your chosen provider:
-   - **OpenRouter (Recommended)**: Gives access to `anthropic/claude-sonnet-5.5` (the calibrated default judge) as well as `x-ai/grok-4.3` (which powers live search for the X trend scout).
+   - **OpenRouter**: Paid models like `anthropic/claude-sonnet-5.5` or `x-ai/grok-4.3` (for live X scout search).
    - **Anthropic**: Direct first-party Claude models (`claude-sonnet-5.5`, `claude-opus-5-5`, etc.).
    - **OpenAI**: GPT-4o, o1, etc.
    - **Azure OpenAI / Microsoft Foundry**: For deployed enterprise and Copilot models.
