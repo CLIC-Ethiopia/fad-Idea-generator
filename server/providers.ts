@@ -203,16 +203,37 @@ async function openaiChat(settings: AppSettings, p: ProviderId, model: string, r
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (key) {
     if (p === 'azure') headers['api-key'] = key;
-    else headers.Authorization = `Bearer ${key}`;
+    else {
+      headers.Authorization = `Bearer ${key}`;
+      if (p === 'gemini') headers['x-goog-api-key'] = key;
+    }
   }
   if (p === 'openrouter') Object.assign(headers, { 'HTTP-Referer': 'http://localhost:8300', 'X-Title': 'Idea Generator 2' });
 
   let jsonMode: 'schema' | 'prompt' = (p === 'mlx' || p === 'gemini') ? 'prompt' : 'schema';
-  let noSystem = false;
+  let noSystem = p === 'gemini';
   let cleanModel = p === 'gemini' ? model.replace(/^models\//, '') : model;
   if (p === 'gemini') {
     if (!cleanModel || cleanModel.includes('claude') || cleanModel.includes('sonnet') || cleanModel.includes('gpt-') || cleanModel.includes('grok') || cleanModel.includes('antigravity')) {
       cleanModel = 'gemini-2.0-flash';
+    }
+  }
+  if (p === 'openrouter') {
+    // Proactively redirect known defunct free slugs to the official free router
+    const DEFUNCT_OPENROUTER_FREE = [
+      'meta-llama/llama-3.3-70b-instruct:free',
+      'qwen/qwen-2.5-72b-instruct:free',
+      'deepseek/deepseek-chat:free',
+      'mistralai/mistral-7b-instruct:free',
+      'google/gemini-2.0-flash-exp:free',
+      'meta-llama/llama-3-8b-instruct:free',
+      'meta-llama/llama-3.1-8b-instruct:free',
+      'meta-llama/llama-3.1-70b-instruct:free',
+      'nousresearch/hermes-3-llama-3.1-405b:free',
+      'google/gemini-flash-1.5-exp:free',
+    ];
+    if (DEFUNCT_OPENROUTER_FREE.includes(cleanModel)) {
+      cleanModel = 'openrouter/free';
     }
   }
   const body: any = { model: cleanModel, temperature: r.temperature, max_tokens: Math.max(r.maxTokens ?? 1200, 1500) };
@@ -230,7 +251,6 @@ async function openaiChat(settings: AppSettings, p: ProviderId, model: string, r
           { role: 'user', content: r.user },
         ];
     if (jsonMode === 'schema') body.response_format = { type: 'json_schema', json_schema: { name: r.schemaName, strict: true, schema: r.schema } };
-    else if (p === 'gemini') body.response_format = { type: 'json_object' };
     else delete body.response_format;
 
     const res = await fetch(`${base}/chat/completions`, {
@@ -260,17 +280,27 @@ async function openaiChat(settings: AppSettings, p: ProviderId, model: string, r
     if (!res.ok) {
       lastError = `${PROVIDERS[p].label} ${res.status}: ${text.slice(0, 300)}`;
       if (res.status === 401 || res.status === 403) throw new ProviderError('bad_key', lastError);
-      // Automatically recover from high demand / 503 spikes on Gemini
-      if (p === 'gemini' && (res.status === 503 || /high demand|unavailable|overloaded/i.test(text))) {
+      // Automatically recover from high demand / 503 / 429 spikes on Gemini
+      if (p === 'gemini' && adjustments < 5 && (res.status === 503 || res.status === 429 || /high demand|unavailable|overloaded|resource exhausted/i.test(text))) {
+        adjustments++;
+        attempt = Math.max(0, attempt - 1);
         if (body.model.includes('2.5')) {
           body.model = 'gemini-2.0-flash';
-          await sleep(500);
-          continue;
         } else if (body.model.includes('2.0')) {
           body.model = 'gemini-1.5-flash';
-          await sleep(500);
-          continue;
+        } else {
+          body.model = body.model === 'gemini-1.5-flash' ? 'gemini-2.0-flash' : 'gemini-1.5-flash';
         }
+        await sleep(1000 * adjustments);
+        continue;
+      }
+      // Automatically recover from OpenRouter 404/400 "unavailable for free" / retired endpoints
+      if (p === 'openrouter' && (res.status === 404 || res.status === 400) && adjustments < 4 && (/unavailable for free|no endpoints|not found|does not exist/i.test(text))) {
+        adjustments++;
+        attempt = Math.max(0, attempt - 1);
+        body.model = 'openrouter/free';
+        await sleep(500);
+        continue;
       }
       if (res.status === 429 || res.status >= 500) { await sleep(1000 * attempt); continue; }
       throw new ProviderError('provider_error', lastError);
@@ -407,8 +437,14 @@ export async function listModels(settings: AppSettings, p: ProviderId): Promise<
       const chatModels = raw
         .map((id: string) => id.replace(/^models\//, ''))
         .filter((id: string) => id.startsWith('gemini-') && !id.includes('embedding') && !id.includes('imagen') && !id.includes('aqa') && !id.includes('whisper'));
-      const order = (s: string) => (s.includes('2.5-flash') ? 0 : s.includes('2.0-flash') ? 1 : s.includes('flash') ? 2 : s.includes('pro') ? 3 : 4);
+      const order = (s: string) => (s.includes('2.0-flash') ? 0 : s.includes('1.5-flash') ? 1 : s.includes('2.5-flash') ? 2 : s.includes('pro') ? 3 : 4);
       return [...new Set(chatModels)].sort((a: string, b: string) => order(a) - order(b) || b.localeCompare(a));
+    }
+    if (p === 'openrouter') {
+      const isFree = (id: string) => id.endsWith(':free') || id === 'openrouter/free';
+      const freeModels = raw.filter(isFree).sort();
+      const paidModels = raw.filter((id: string) => !isFree(id)).sort();
+      return [...freeModels, ...paidModels];
     }
     return raw.sort();
   } catch (e: any) {

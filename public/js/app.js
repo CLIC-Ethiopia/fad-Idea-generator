@@ -738,7 +738,7 @@ const CURATED_MODELS = [
     group: 'Google Gemini (Free Tier)',
     models: [
       { id: 'gemini:gemini-2.0-flash', label: 'gemini:gemini-2.0-flash (Recommended · Fast & Stable)' },
-      { id: 'gemini:gemini-1.5-flash', label: 'gemini:gemini-1.5-flash (Ultra Reliable)' },
+      { id: 'gemini:gemini-1.5-flash', label: 'gemini:gemini-1.5-flash (Ultra Reliable · Free Tier)' },
       { id: 'gemini:gemini-2.5-flash', label: 'gemini:gemini-2.5-flash (Preview)' },
       { id: 'gemini:gemini-2.5-pro', label: 'gemini:gemini-2.5-pro (Deep reasoning)' },
     ],
@@ -746,21 +746,32 @@ const CURATED_MODELS = [
   {
     group: 'OpenRouter Free Models',
     models: [
-      { id: 'openrouter:google/gemini-2.0-flash-exp:free', label: 'openrouter:google/gemini-2.0-flash-exp:free (Free)' },
-      { id: 'openrouter:meta-llama/llama-3.3-70b-instruct:free', label: 'openrouter:meta-llama/llama-3.3-70b-instruct:free (Free)' },
-      { id: 'openrouter:qwen/qwen-2.5-72b-instruct:free', label: 'openrouter:qwen/qwen-2.5-72b-instruct:free (Free)' },
-      { id: 'openrouter:deepseek/deepseek-chat:free', label: 'openrouter:deepseek/deepseek-chat:free (Free)' },
-      { id: 'openrouter:mistralai/mistral-7b-instruct:free', label: 'openrouter:mistralai/mistral-7b-instruct:free (Free)' },
+      { id: 'openrouter:openrouter/free', label: 'openrouter:openrouter/free (Auto-routes free Llama/Qwen/Gemma · Free)' },
+      { id: 'openrouter:nvidia/nemotron-3.5-lightning:free', label: 'openrouter:nvidia/nemotron-3.5-lightning:free (NVIDIA Lightning · Free)' },
+      { id: 'openrouter:nvidia/nemotron-3-ultra-550b-a55b:free', label: 'openrouter:nvidia/nemotron-3-ultra-550b-a55b:free (NVIDIA Ultra 550B · Free)' },
+      { id: 'openrouter:nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free', label: 'openrouter:nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free (NVIDIA Reasoning · Free)' },
+      { id: 'openrouter:nvidia/nemotron-3.5-super-vl:free', label: 'openrouter:nvidia/nemotron-3.5-super-vl:free (NVIDIA Super VL · Free)' },
+      { id: 'openrouter:google/gemma-4-31b-it:free', label: 'openrouter:google/gemma-4-31b-it:free (Google Gemma 4 31B · Free)' },
+      { id: 'openrouter:google/gemma-4-26b-a4b-it:free', label: 'openrouter:google/gemma-4-26b-a4b-it:free (Google Gemma 4 26B · Free)' },
+      { id: 'openrouter:baidu/ernie-5.5-flash-preview:free', label: 'openrouter:baidu/ernie-5.5-flash-preview:free (Baidu ERNIE 5.5 · Free)' },
+      { id: 'openrouter:thinkingmachines/inkling-2-small:free', label: 'openrouter:thinkingmachines/inkling-2-small:free (Thinking Machines Inkling · Free)' },
+      { id: 'openrouter:cohere/north-mini-code:free', label: 'openrouter:cohere/north-mini-code:free (Cohere North Mini Code · Free)' },
+      { id: 'openrouter:liquid/lfm-3-1.7b:free', label: 'openrouter:liquid/lfm-3-1.7b:free (LiquidAI LFM-3 · Free)' },
+      { id: 'openrouter:liquid/lfm-2.5-2.6b:free', label: 'openrouter:liquid/lfm-2.5-2.6b:free (LiquidAI LFM-2.5 · Free)' },
+      { id: 'openrouter:recursive/flint-v1.0:free', label: 'openrouter:recursive/flint-v1.0:free (Recursive Flint · Free)' },
+      { id: 'openrouter:dots-studio/dots-3-note-preview:free', label: 'openrouter:dots-studio/dots-3-note-preview:free (Dots Studio · Free)' },
     ],
   },
   {
     group: 'OpenRouter Paid Models',
     models: [
-      { id: 'openrouter:anthropic/claude-sonnet-5.5', label: 'openrouter:anthropic/claude-sonnet-5.5 (Calibrated judge)' },
-      { id: 'openrouter:anthropic/claude-haiku-4.5', label: 'openrouter:anthropic/claude-haiku-4.5' },
-      { id: 'openrouter:openai/gpt-4o-mini', label: 'openrouter:openai/gpt-4o-mini' },
-      { id: 'openrouter:openai/gpt-4o', label: 'openrouter:openai/gpt-4o' },
-      { id: 'openrouter:x-ai/grok-4.3', label: 'openrouter:x-ai/grok-4.3 (X scout search)' },
+      { id: 'openrouter:meta-llama/llama-3.3-70b-instruct', label: 'openrouter:meta-llama/llama-3.3-70b-instruct (Meta Llama 3.3 70B · Paid)' },
+      { id: 'openrouter:qwen/qwen-2.5-72b-instruct', label: 'openrouter:qwen/qwen-2.5-72b-instruct (Qwen 2.5 72B · Paid)' },
+      { id: 'openrouter:anthropic/claude-sonnet-5.5', label: 'openrouter:anthropic/claude-sonnet-5.5 (Calibrated judge · Paid)' },
+      { id: 'openrouter:anthropic/claude-haiku-4.5', label: 'openrouter:anthropic/claude-haiku-4.5 (Paid)' },
+      { id: 'openrouter:openai/gpt-4o-mini', label: 'openrouter:openai/gpt-4o-mini (Paid)' },
+      { id: 'openrouter:openai/gpt-4o', label: 'openrouter:openai/gpt-4o (Paid)' },
+      { id: 'openrouter:x-ai/grok-4.3', label: 'openrouter:x-ai/grok-4.3 (X scout search · Paid)' },
     ],
   },
   {
@@ -779,10 +790,10 @@ const CURATED_MODELS = [
     ],
   },
   {
-    group: 'Local Models',
+    group: 'Local Models (Ollama 100% Free)',
     models: [
-      { id: 'ollama:qwen3:8b', label: 'ollama:qwen3:8b' },
-      { id: 'ollama:llama3.2:3b', label: 'ollama:llama3.2:3b' },
+      { id: 'ollama:llama3.2:3b', label: 'ollama:llama3.2:3b (Free Local Llama)' },
+      { id: 'ollama:qwen3:8b', label: 'ollama:qwen3:8b (Free Local Qwen)' },
     ],
   },
 ];
@@ -794,15 +805,33 @@ function renderModelOptions(selectedVal = '') {
     ))
   );
   const known = new Set(CURATED_MODELS.flatMap((g) => g.models.map((m) => m.id)));
-  const custom = [];
+  const customFree = [];
+  const customOther = [];
   for (const [p, ids] of modelCatalog.entries()) {
     for (const id of ids) {
       const full = `${p}:${id}`;
-      if (!known.has(full)) custom.push(h('option', { value: full, selected: full === selectedVal }, full));
+      if (!known.has(full)) {
+        const isFree = id.endsWith(':free') || id === 'openrouter/free' || p === 'gemini';
+        const opt = h('option', { value: full, selected: full === selectedVal }, `${full}${isFree ? ' (Free)' : ''}`);
+        if (isFree) customFree.push(opt);
+        else customOther.push(opt);
+      }
     }
   }
-  if (custom.length) groups.push(h('optgroup', { label: 'Discovered Models' }, custom.slice(0, 100)));
+  if (customFree.length) groups.push(h('optgroup', { label: 'Discovered Free Models' }, customFree.slice(0, 100)));
+  if (customOther.length) groups.push(h('optgroup', { label: 'Discovered Other Models' }, customOther.slice(0, 100)));
   return groups;
+}
+
+function updateAllModelSelects() {
+  document.querySelectorAll('select.model-select').forEach((sel) => {
+    const currentVal = sel.value;
+    clear(sel, [
+      h('option', { value: '' }, t('pickModel')),
+      ...renderModelOptions(currentVal),
+    ]);
+    if (currentVal) sel.value = currentVal;
+  });
 }
 
 function modelField(label, input, note) {
@@ -863,13 +892,16 @@ function presetBar(inputs) {
       h('option', { value: '' }, t('presetModel')),
       h('option', { value: 'gemini:gemini-2.0-flash' }, '⭐ Google Gemini: gemini-2.0-flash (Recommended · Free Tier)'),
       h('option', { value: 'gemini:gemini-1.5-flash' }, '⭐ Google Gemini: gemini-1.5-flash (Ultra Reliable · Free Tier)'),
-      h('option', { value: 'gemini:gemini-2.5-flash' }, '⭐ Google Gemini: gemini-2.5-flash (Preview)'),
-      h('option', { value: 'openrouter:google/gemini-2.0-flash-exp:free' }, '🆓 OpenRouter: gemini-2.0-flash-exp:free (Free)'),
-      h('option', { value: 'openrouter:meta-llama/llama-3.3-70b-instruct:free' }, '🆓 OpenRouter: llama-3.3-70b-instruct:free (Free)'),
-      h('option', { value: 'openrouter:qwen/qwen-2.5-72b-instruct:free' }, '🆓 OpenRouter: qwen-2.5-72b-instruct:free (Free)'),
+      h('option', { value: 'openrouter:openrouter/free' }, '🆓 OpenRouter: openrouter/free (Auto-routes free Llama/Qwen/Gemma)'),
+      h('option', { value: 'openrouter:nvidia/nemotron-3.5-lightning:free' }, '🆓 OpenRouter: NVIDIA Nemotron 3.5 Lightning (Free)'),
+      h('option', { value: 'openrouter:nvidia/nemotron-3-ultra-550b-a55b:free' }, '🆓 OpenRouter: NVIDIA Nemotron 3 Ultra 550B (Free)'),
+      h('option', { value: 'openrouter:google/gemma-4-31b-it:free' }, '🆓 OpenRouter: Google Gemma 4 31B (Free)'),
+      h('option', { value: 'openrouter:meta-llama/llama-3.3-70b-instruct' }, '💎 OpenRouter: Meta Llama 3.3 70B (Paid)'),
+      h('option', { value: 'openrouter:qwen/qwen-2.5-72b-instruct' }, '💎 OpenRouter: Qwen 2.5 72B (Paid)'),
       h('option', { value: 'openrouter:anthropic/claude-sonnet-5.5' }, '💎 OpenRouter: claude-sonnet-5.5 (Paid)'),
       h('option', { value: 'openrouter:openai/gpt-4o-mini' }, '💎 OpenRouter: gpt-4o-mini (Paid)'),
-      h('option', { value: 'ollama:qwen3:8b' }, '💻 Ollama: qwen3:8b (Local)'),
+      h('option', { value: 'ollama:llama3.2:3b' }, '💻 Ollama: llama3.2:3b (Free Local Llama)'),
+      h('option', { value: 'ollama:qwen3:8b' }, '💻 Ollama: qwen3:8b (Free Local Qwen)'),
     )
   );
 }
@@ -880,6 +912,7 @@ function refreshModelList() {
   const dynamic = [...modelCatalog.entries()].flatMap(([p, ids]) => ids.slice(0, 400).map((id) => `${p}:${id}`));
   const set = [...new Set([...allCurated, ...dynamic])];
   clear(dl, set.map((id) => h('option', { value: id })));
+  updateAllModelSelects();
 }
 
 function appSettingsDialog() {
@@ -1099,6 +1132,17 @@ async function main() {
   try {
     S.providers = await pushSettings(S.settings);
     warnMissingKeys();
+    // Background discovery of live models for configured providers
+    for (const p of S.providers?.providers ?? []) {
+      if (p.keySource || p.local) {
+        api('POST', `/api/providers/${p.id}/models`, {}).then(({ models }) => {
+          if (models?.length) {
+            modelCatalog.set(p.id, models);
+            refreshModelList();
+          }
+        }).catch(() => {});
+      }
+    }
   } catch (e) {
     fail(e);
   }
