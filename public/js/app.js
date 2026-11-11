@@ -773,16 +773,18 @@ const CURATED_MODELS = [
   },
 ];
 
-function renderModelOptions() {
+function renderModelOptions(selectedVal = '') {
   const groups = CURATED_MODELS.map((g) =>
-    h('optgroup', { label: g.group }, g.models.map((m) => h('option', { value: m.id }, m.label || m.id)))
+    h('optgroup', { label: g.group }, g.models.map((m) =>
+      h('option', { value: m.id, selected: m.id === selectedVal }, m.label || m.id)
+    ))
   );
   const known = new Set(CURATED_MODELS.flatMap((g) => g.models.map((m) => m.id)));
   const custom = [];
   for (const [p, ids] of modelCatalog.entries()) {
     for (const id of ids) {
       const full = `${p}:${id}`;
-      if (!known.has(full)) custom.push(h('option', { value: full }, full));
+      if (!known.has(full)) custom.push(h('option', { value: full, selected: full === selectedVal }, full));
     }
   }
   if (custom.length) groups.push(h('optgroup', { label: 'Discovered Models' }, custom.slice(0, 100)));
@@ -790,9 +792,10 @@ function renderModelOptions() {
 }
 
 function modelField(label, input, note) {
+  const currentVal = input.value || input.placeholder || '';
   const sel = h('select', {
     class: 'model-select',
-    style: 'margin-top: 4px; font-size: 11px; opacity: 0.9;',
+    style: 'display: block; width: 100%; margin-top: 4px; padding: 6px 8px; font-size: 12px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg-card, #1c1d22); color: var(--fg);',
     onchange: (e) => {
       if (e.target.value) {
         input.value = e.target.value;
@@ -802,21 +805,32 @@ function modelField(label, input, note) {
     },
   },
     h('option', { value: '' }, t('pickModel')),
-    ...renderModelOptions(),
+    ...renderModelOptions(currentVal),
   );
+
+  input.addEventListener('input', () => {
+    const match = Array.from(sel.options).find((opt) => opt.value === input.value);
+    if (match) sel.value = input.value;
+    else sel.value = '';
+  });
+
   return h('label', { class: 'field' },
     h('span', {}, label),
-    input,
     sel,
-    note ? h('small', { class: 'muted' }, note) : null
+    h('div', { class: 'row', style: 'align-items: center; gap: 6px; margin-top: 4px;' },
+      h('span', { class: 'muted small' }, 'ID:'),
+      input,
+    ),
+    note ? h('small', { class: 'muted' }, note) : null,
   );
 }
 
 function presetBar(inputs) {
-  return h('div', { class: 'field', style: 'margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px dashed var(--line);' },
-    h('span', { style: 'font-weight: 600;' }, t('presetModel')),
+  return h('div', { class: 'field', style: 'margin-bottom: 14px; padding: 10px 12px; background: rgba(255,255,255,0.03); border-radius: 8px; border: 1px dashed var(--line);' },
+    h('div', { style: 'font-weight: 600; font-size: 13px; margin-bottom: 6px;' }, t('presetModel')),
     h('select', {
       class: 'model-preset',
+      style: 'width: 100%; padding: 6px 8px; font-size: 12px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg-card, #1c1d22); color: var(--fg);',
       onchange: (e) => {
         const val = e.target.value;
         if (!val) return;

@@ -105,6 +105,35 @@ function baseFor(settings: AppSettings, p: ProviderId) {
   return (settings.baseUrls[p] || PROVIDERS[p].base || '').replace(/\/+$/, '');
 }
 
+/** Finds an active provider that has an API key configured (or is local). */
+export function getActiveProvider(settings: AppSettings): { provider: ProviderId; defaultModel: string } | null {
+  if (keyFor(settings, 'gemini')) return { provider: 'gemini', defaultModel: 'gemini-2.5-flash' };
+  if (keyFor(settings, 'openai')) return { provider: 'openai', defaultModel: 'gpt-4o-mini' };
+  if (keyFor(settings, 'anthropic')) return { provider: 'anthropic', defaultModel: 'claude-3-5-haiku-latest' };
+  if (keyFor(settings, 'openrouter')) return { provider: 'openrouter', defaultModel: 'anthropic/claude-sonnet-5.5' };
+  if (keyFor(settings, 'azure')) return { provider: 'azure', defaultModel: 'gpt-4o' };
+  if (settings.baseUrls?.custom) return { provider: 'custom', defaultModel: 'default' };
+  return null;
+}
+
+/**
+ * Resolves a model reference with intelligent fallback:
+ * If the model points to OpenRouter (the application default) but OpenRouter has no API key,
+ * and another provider (such as Google Gemini, OpenAI, or Anthropic) DOES have a key,
+ * automatically route to the active provider so features work immediately without manual role mapping.
+ */
+export function resolveModelWithFallback(modelRef: string, settings: AppSettings): string {
+  if (!modelRef) modelRef = SONNET;
+  const { provider } = parseModel(modelRef);
+  if (provider === 'openrouter' && !keyFor(settings, 'openrouter')) {
+    const active = getActiveProvider(settings);
+    if (active) {
+      return `${active.provider}:${active.defaultModel}`;
+    }
+  }
+  return modelRef;
+}
+
 export class ProviderError extends Error {
   code: string;
   constructor(code: string, message: string) {
@@ -166,9 +195,14 @@ async function openaiChat(settings: AppSettings, p: ProviderId, model: string, r
   }
   if (p === 'openrouter') Object.assign(headers, { 'HTTP-Referer': 'http://localhost:8300', 'X-Title': 'Idea Generator 2' });
 
-  let jsonMode: 'schema' | 'prompt' = p === 'mlx' ? 'prompt' : 'schema';
+  let jsonMode: 'schema' | 'prompt' = (p === 'mlx' || p === 'gemini') ? 'prompt' : 'schema';
   let noSystem = false;
-  const cleanModel = p === 'gemini' ? model.replace(/^models\//, '') : model;
+  let cleanModel = p === 'gemini' ? model.replace(/^models\//, '') : model;
+  if (p === 'gemini') {
+    if (!cleanModel || cleanModel.includes('claude') || cleanModel.includes('sonnet') || cleanModel.includes('gpt-') || cleanModel.includes('grok') || cleanModel.includes('antigravity')) {
+      cleanModel = 'gemini-2.5-flash';
+    }
+  }
   const body: any = { model: cleanModel, temperature: r.temperature, max_tokens: r.maxTokens ?? 1200 };
   if (p === 'openrouter') {
     body.reasoning = { enabled: false };
@@ -184,6 +218,7 @@ async function openaiChat(settings: AppSettings, p: ProviderId, model: string, r
           { role: 'user', content: r.user },
         ];
     if (jsonMode === 'schema') body.response_format = { type: 'json_schema', json_schema: { name: r.schemaName, strict: true, schema: r.schema } };
+    else if (p === 'gemini') body.response_format = { type: 'json_object' };
     else delete body.response_format;
 
     const res = await fetch(`${base}/chat/completions`, {
@@ -202,8 +237,12 @@ async function openaiChat(settings: AppSettings, p: ProviderId, model: string, r
       if (body.max_tokens && /max_tokens/i.test(text) && /max_completion_tokens/i.test(text)) {
         body.max_completion_tokens = body.max_tokens; delete body.max_tokens; continue;
       }
-      if (/developer instruction/i.test(text)) { noSystem = true; continue; }
-      if (jsonMode === 'schema' && /response_format|json_schema|structured/i.test(text)) { jsonMode = 'prompt'; continue; }
+      if (/developer instruction|system instruction/i.test(text)) { noSystem = true; continue; }
+      if (body.response_format && /response_format|json_schema|structured|json_object|invalid value/i.test(text)) {
+        delete body.response_format;
+        jsonMode = 'prompt';
+        continue;
+      }
     }
     attempt++;
     if (!res.ok) {
@@ -304,7 +343,8 @@ async function anthropicChat(settings: AppSettings, model: string, r: ChatReques
 export function makeChat(getSettings: () => AppSettings): ChatFn {
   return async (r) => {
     const settings = getSettings();
-    const { provider, model } = parseModel(r.model);
+    const resolvedModel = resolveModelWithFallback(r.model, settings);
+    const { provider, model } = parseModel(resolvedModel);
     if (!model) throw new ProviderError('bad_model', `No model given in "${r.model}"`);
     const def = PROVIDERS[provider];
     if (def.type === 'anthropic') return anthropicChat(settings, model, r);

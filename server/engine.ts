@@ -10,7 +10,7 @@ import { makeLLM } from './llm.ts';
 import { asUrl, fetchPage as realFetchPage } from './extract.ts';
 import { fetchPapers as realFetchPapers, researchLeads, xLeads } from './leads.ts';
 import { writeBrief, writeProject } from './project.ts';
-import { ProviderError, type AppSettings, type ChatFn, type Role } from './providers.ts';
+import { ProviderError, resolveModelWithFallback, type AppSettings, type ChatFn, type Role } from './providers.ts';
 import { fitness, isJudged, medal, scoreSum } from '../public/js/score.js';
 import { nextMove } from '../public/js/evolve.js';
 
@@ -92,7 +92,10 @@ export function createEngine(deps: Deps) {
     if (!i) throw new AppError(404, 'not_found', 'Idea not found');
     return i;
   };
-  const modelFor = (board: Board, role: Role) => board.config.models[role] || deps.settings().models[role];
+  const modelFor = (board: Board, role: Role) => {
+    const raw = board.config.models[role] || deps.settings().models[role];
+    return resolveModelWithFallback(raw, deps.settings());
+  };
   const titles = (boardId: number) => repo.listIdeas(boardId).map((i) => i.title);
   const emitIdeas = (boardId: number, ideas: Idea[]) => ideas.length && bus.emit(boardId, { type: 'ideas', ideas });
 
@@ -387,7 +390,7 @@ export function createEngine(deps: Deps) {
       if (!boards.length) throw new AppError(400, 'too_few', 'There are no ideas to report on yet');
       const { synthesis } = await call(0, () =>
         llm.synthesize({
-          model: deps.settings().models.summary, lang, days,
+          model: resolveModelWithFallback(deps.settings().models.summary, deps.settings()), lang, days,
           boards: boards.map((b) => ({
             title: b.title, goal: b.goal, summary: b.summary?.headline ?? '',
             best: b.best.map((i) => ({ title: i.title, pitch: i.pitch, sum: i.sum })),

@@ -406,6 +406,19 @@ export class Graph {
       ctx.setLineDash([]);
     }
     ctx.restore();
+
+    if (this.nodes.size === 0 && this.ghosts.length === 0) {
+      ctx.save();
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+      ctx.font = `500 15px ${FONT}`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('🌱 Skriv en idé eller klistra in en länk nedan för att börja', w / 2, h / 2 - 12);
+      ctx.font = `400 13px ${FONT}`;
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.28)';
+      ctx.fillText('(Type an idea or paste a link below to start your idea graph)', w / 2, h / 2 + 16);
+      ctx.restore();
+    }
   }
 
   drawNode(n, now, focus, k) {

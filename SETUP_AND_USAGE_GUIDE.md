@@ -302,10 +302,25 @@ npm run calibrate -- --model ollama:qwen3:8b
 
 ## 7. Troubleshooting & FAQ
 
-#### Q: I submitted text on the canvas but nothing happened.
-- **Check Board Selection**: Ensure a board is open (title visible in the top bar).
-- **Check API Key**: Open 🔑 (Settings). If using cloud providers, verify that your key is entered and passes the Test (`…`) check.
-- **Check Terminal**: Look for any HTTP 502 error logs explaining which provider failed.
+#### Q: I submitted text on the canvas but nothing happened or got "Something went wrong".
+- **Intelligent Provider Fallback**: The app now automatically falls back from OpenRouter to Google Gemini (or whichever key you added) if no OpenRouter key is set. Make sure your Gemini API key is entered in Settings (🔑) or `GEMINI_API_KEY` in `.env`.
+- **Recommended Free Model**: `gemini:gemini-2.5-flash` or `gemini:gemini-2.0-flash`.
+- **Check Terminal**: Look for any HTTP error logs or toast notifications.
+
+#### Q: Why did the model dropdown in Settings only show one model?
+- In standard browsers, typing into a field attached to a `<datalist>` filters the list to matching text only.
+- The app now features a dedicated, grouped dropdown selector (`<select>`) for every role, with options organized by category:
+  - **Google Gemini (Free Tier)**: `gemini:gemini-2.5-flash`, `gemini:gemini-2.0-flash`, `gemini:gemini-1.5-flash`
+  - **OpenRouter Free Models**: `meta-llama/llama-3.3-70b-instruct:free`, `qwen/qwen-2.5-72b-instruct:free`, etc.
+  - **OpenRouter Paid Models**: `anthropic/claude-sonnet-5.5`, `openai/gpt-4o-mini`, etc.
+  - **Anthropic Direct & OpenAI Direct**
+  - **Local Models (Ollama, MLX, LM Studio)**
+- You can also use the **Quick Preset Bar** at the top of the Models section in Settings or Board Settings to apply a model to all roles with a single click.
+
+#### Q: Why does my local version show an empty canvas, while AI Studio showed an idea node?
+- **Fresh SQLite Database**: A newly cloned local instance starts with 0 ideas in `data/ideas.db`.
+- The canvas will display a friendly onboarding prompt: `🌱 Skriv en idé eller klistra in en länk nedan för att börja` (`Type an idea or paste a link below to start your idea graph`).
+- Once you submit your first seed in the bottom input bar (e.g. `Personalized AI tutor for math`), the idea node will appear as a clickable colored bubble on the canvas, which you can then click to open the details panel, expand into branches, or judge.
 
 #### Q: Where is my data saved?
 - Data is stored in SQLite at `data/ideas.db`.
@@ -313,6 +328,14 @@ npm run calibrate -- --model ollama:qwen3:8b
   ```bash
   cp data/ideas.db data/ideas-backup.db
   ```
+
+#### Q: How do I pull the latest changes into my local clone?
+```bash
+git pull origin main
+npm install
+npm test
+npm run dev
+```
 
 #### Q: How do I run on a different port?
 - Pass the `PORT` environment variable:
