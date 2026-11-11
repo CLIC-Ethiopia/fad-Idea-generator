@@ -1,0 +1,22 @@
+{
+  "name": "idea-generator-2",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "description": "Idégeneratorn: frö, förgrena, korsa, bedöm, och låt evolutionen avla fram de bästa idéerna.",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server/index.ts",
+    "dev": "node --watch-path=server --watch-path=public/js/score.js --watch-path=public/js/evolve.js server/index.ts",
+    "build": "node --check server/index.ts server/app.ts server/db.ts server/engine.ts server/autopilot.ts server/providers.ts server/leads.ts server/project.ts server/extract.ts",
+    "lint": "node --check server/index.ts server/app.ts server/db.ts server/engine.ts server/autopilot.ts server/providers.ts server/leads.ts server/project.ts server/extract.ts",
+    "test": "node --test \"test/**/*.test.ts\"",
+    "calibrate": "node tools/calibrate-judge.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.3.0"
+  }
+}
