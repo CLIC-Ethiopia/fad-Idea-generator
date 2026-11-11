@@ -253,11 +253,65 @@ legend { padding: 0 6px; color: var(--text-2); font-weight: 600; }
 #hovercard p { margin: 4px 0; color: var(--text-2); }
 
 /* ---------- toasts */
-#toasts { position: fixed; right: 16px; bottom: 16px; display: grid; gap: 8px; z-index: 60; max-width: 420px; }
-.toast { background: #232835; border: 1px solid #3a4150; border-left: 3px solid var(--accent); border-radius: 8px; padding: 9px 12px; box-shadow: 0 8px 24px rgba(0,0,0,.4); transition: opacity .3s, transform .3s; cursor: pointer; word-break: break-word; }
-.toast.good { border-left-color: var(--gold); }
-.toast.error { border-left-color: var(--danger); }
-.toast.out { opacity: 0; transform: translateY(6px); }
+#toasts {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 10px;
+  z-index: 999;
+  max-width: 420px;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  pointer-events: none;
+  padding: 4px;
+}
+.toast {
+  pointer-events: auto;
+  background: #1e222d;
+  border: 1px solid #353b4d;
+  border-left: 4px solid var(--accent, #6366f1);
+  border-radius: 8px;
+  padding: 10px 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  word-break: break-word;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  cursor: pointer;
+}
+.toast.good { border-left-color: var(--gold, #f59e0b); }
+.toast.error { border-left-color: var(--danger, #ef4444); }
+.toast.out { opacity: 0; transform: translateY(8px); }
+.toast-content {
+  flex: 1;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #f1f3f9;
+}
+.toast-close {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, color 0.15s ease;
+  flex-shrink: 0;
+}
+.toast-close:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
 
 /* ---------- exhibition */
 #exhibit-overlay { display: none; }

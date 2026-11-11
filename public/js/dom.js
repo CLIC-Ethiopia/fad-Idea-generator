@@ -45,14 +45,40 @@ export function svg(tag, attrs = {}, ...children) {
 }
 
 let toastRoot;
-/** A short message in the corner. kind: info | good | error */
-export function toast(message, kind = 'info', ms = 5000) {
+/** A persistent floating notification card with a manual close button. Kind: info | good | error */
+export function toast(message, kind = 'info', _ms) {
   toastRoot ??= document.getElementById('toasts');
-  const el = h('div', { class: `toast ${kind}`, role: kind === 'error' ? 'alert' : 'status' }, message);
+
+  function dismiss() {
+    el.classList.add('out');
+    setTimeout(() => el.remove(), 250);
+  }
+
+  const closeBtn = h('button', {
+    class: 'toast-close',
+    type: 'button',
+    'aria-label': 'Close notification',
+    title: 'Close',
+    onclick: (e) => {
+      e.stopPropagation();
+      dismiss();
+    },
+  }, '×');
+
+  const content = h('div', { class: 'toast-content' }, message);
+  const el = h('div', { class: `toast ${kind}`, role: kind === 'error' ? 'alert' : 'status' },
+    content,
+    closeBtn,
+  );
+
+  el.addEventListener('click', (e) => {
+    if (e.target.tagName !== 'BUTTON' && e.target.tagName !== 'A') {
+      dismiss();
+    }
+  });
+
   toastRoot.append(el);
-  setTimeout(() => el.classList.add('out'), ms);
-  setTimeout(() => el.remove(), ms + 400);
-  el.addEventListener('click', () => el.remove());
+  return el;
 }
 
 export function debounce(fn, ms) {
