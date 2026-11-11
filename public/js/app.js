@@ -674,7 +674,8 @@ async function boardSettingsDialog() {
       field(t('mode'), mode), h('div', { class: 'grid3' }, field(t('pace'), pace), field(t('stepsPerHour'), sph), field(t('usdPerDay'), usd)),
       h('small', { class: 'muted' }, t('rateNote'))),
     h('fieldset', {}, h('legend', {}, t('models')), h('small', { class: 'muted' }, t('modelsBoardNote')),
-      h('div', { class: 'grid2' }, ROLES.map((r) => field(t(`role_${r}`), models[r])))),
+      presetBar(models),
+      h('div', { class: 'grid2' }, ROLES.map((r) => modelField(t(`role_${r}`), models[r])))),
     h('button', {
       class: 'btn danger small', type: 'button',
       onclick: async () => {
@@ -718,9 +719,138 @@ const HAS_URL = ['ollama', 'mlx', 'lmstudio', 'azure', 'custom'];
 const HAS_KEY = ['openrouter', 'anthropic', 'openai', 'gemini', 'azure', 'custom'];
 const modelCatalog = new Map();
 
+const CURATED_MODELS = [
+  {
+    group: 'Google Gemini (Free Tier)',
+    models: [
+      { id: 'gemini:gemini-2.5-flash', label: 'gemini:gemini-2.5-flash (Recommended · Fast & Smart)' },
+      { id: 'gemini:gemini-2.0-flash', label: 'gemini:gemini-2.0-flash' },
+      { id: 'gemini:gemini-1.5-flash', label: 'gemini:gemini-1.5-flash' },
+      { id: 'gemini:gemini-2.5-pro', label: 'gemini:gemini-2.5-pro (Deep reasoning)' },
+    ],
+  },
+  {
+    group: 'OpenRouter Free Models',
+    models: [
+      { id: 'openrouter:google/gemini-2.0-flash-exp:free', label: 'openrouter:google/gemini-2.0-flash-exp:free (Free)' },
+      { id: 'openrouter:meta-llama/llama-3.3-70b-instruct:free', label: 'openrouter:meta-llama/llama-3.3-70b-instruct:free (Free)' },
+      { id: 'openrouter:qwen/qwen-2.5-72b-instruct:free', label: 'openrouter:qwen/qwen-2.5-72b-instruct:free (Free)' },
+      { id: 'openrouter:deepseek/deepseek-chat:free', label: 'openrouter:deepseek/deepseek-chat:free (Free)' },
+      { id: 'openrouter:mistralai/mistral-7b-instruct:free', label: 'openrouter:mistralai/mistral-7b-instruct:free (Free)' },
+    ],
+  },
+  {
+    group: 'OpenRouter Paid Models',
+    models: [
+      { id: 'openrouter:anthropic/claude-sonnet-5.5', label: 'openrouter:anthropic/claude-sonnet-5.5 (Calibrated judge)' },
+      { id: 'openrouter:anthropic/claude-haiku-4.5', label: 'openrouter:anthropic/claude-haiku-4.5' },
+      { id: 'openrouter:openai/gpt-4o-mini', label: 'openrouter:openai/gpt-4o-mini' },
+      { id: 'openrouter:openai/gpt-4o', label: 'openrouter:openai/gpt-4o' },
+      { id: 'openrouter:x-ai/grok-4.3', label: 'openrouter:x-ai/grok-4.3 (X scout search)' },
+    ],
+  },
+  {
+    group: 'Anthropic Direct',
+    models: [
+      { id: 'anthropic:claude-sonnet-5-5', label: 'anthropic:claude-sonnet-5-5' },
+      { id: 'anthropic:claude-opus-5-5', label: 'anthropic:claude-opus-5-5' },
+      { id: 'anthropic:claude-haiku-4-5', label: 'anthropic:claude-haiku-4-5' },
+    ],
+  },
+  {
+    group: 'OpenAI Direct',
+    models: [
+      { id: 'openai:gpt-4o-mini', label: 'openai:gpt-4o-mini' },
+      { id: 'openai:gpt-4o', label: 'openai:gpt-4o' },
+    ],
+  },
+  {
+    group: 'Local Models',
+    models: [
+      { id: 'ollama:qwen3:8b', label: 'ollama:qwen3:8b' },
+      { id: 'ollama:llama3.2:3b', label: 'ollama:llama3.2:3b' },
+    ],
+  },
+];
+
+function renderModelOptions() {
+  const groups = CURATED_MODELS.map((g) =>
+    h('optgroup', { label: g.group }, g.models.map((m) => h('option', { value: m.id }, m.label || m.id)))
+  );
+  const known = new Set(CURATED_MODELS.flatMap((g) => g.models.map((m) => m.id)));
+  const custom = [];
+  for (const [p, ids] of modelCatalog.entries()) {
+    for (const id of ids) {
+      const full = `${p}:${id}`;
+      if (!known.has(full)) custom.push(h('option', { value: full }, full));
+    }
+  }
+  if (custom.length) groups.push(h('optgroup', { label: 'Discovered Models' }, custom.slice(0, 100)));
+  return groups;
+}
+
+function modelField(label, input, note) {
+  const sel = h('select', {
+    class: 'model-select',
+    style: 'margin-top: 4px; font-size: 11px; opacity: 0.9;',
+    onchange: (e) => {
+      if (e.target.value) {
+        input.value = e.target.value;
+        input.dispatchEvent(new Event('input'));
+        input.dispatchEvent(new Event('change'));
+      }
+    },
+  },
+    h('option', { value: '' }, t('pickModel')),
+    ...renderModelOptions(),
+  );
+  return h('label', { class: 'field' },
+    h('span', {}, label),
+    input,
+    sel,
+    note ? h('small', { class: 'muted' }, note) : null
+  );
+}
+
+function presetBar(inputs) {
+  return h('div', { class: 'field', style: 'margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px dashed var(--line);' },
+    h('span', { style: 'font-weight: 600;' }, t('presetModel')),
+    h('select', {
+      class: 'model-preset',
+      onchange: (e) => {
+        const val = e.target.value;
+        if (!val) return;
+        for (const r of ROLES) {
+          if (r === 'x' && !val.includes('openrouter')) {
+            inputs[r].value = 'openrouter:x-ai/grok-4.3';
+          } else {
+            inputs[r].value = val;
+          }
+          inputs[r].dispatchEvent(new Event('input'));
+          inputs[r].dispatchEvent(new Event('change'));
+        }
+        e.target.value = '';
+      },
+    },
+      h('option', { value: '' }, t('presetModel')),
+      h('option', { value: 'gemini:gemini-2.5-flash' }, '⭐ Google Gemini: gemini-2.5-flash (Free Tier)'),
+      h('option', { value: 'gemini:gemini-2.0-flash' }, '⭐ Google Gemini: gemini-2.0-flash (Free Tier)'),
+      h('option', { value: 'openrouter:google/gemini-2.0-flash-exp:free' }, '🆓 OpenRouter: gemini-2.0-flash-exp:free (Free)'),
+      h('option', { value: 'openrouter:meta-llama/llama-3.3-70b-instruct:free' }, '🆓 OpenRouter: llama-3.3-70b-instruct:free (Free)'),
+      h('option', { value: 'openrouter:qwen/qwen-2.5-72b-instruct:free' }, '🆓 OpenRouter: qwen-2.5-72b-instruct:free (Free)'),
+      h('option', { value: 'openrouter:anthropic/claude-sonnet-5.5' }, '💎 OpenRouter: claude-sonnet-5.5 (Paid)'),
+      h('option', { value: 'openrouter:openai/gpt-4o-mini' }, '💎 OpenRouter: gpt-4o-mini (Paid)'),
+      h('option', { value: 'ollama:qwen3:8b' }, '💻 Ollama: qwen3:8b (Local)'),
+    )
+  );
+}
+
 function refreshModelList() {
   const dl = $('#model-list');
-  clear(dl, [...modelCatalog.entries()].flatMap(([p, ids]) => ids.slice(0, 400).map((id) => h('option', { value: `${p}:${id}` }))));
+  const allCurated = CURATED_MODELS.flatMap((g) => g.models.map((m) => m.id));
+  const dynamic = [...modelCatalog.entries()].flatMap(([p, ids]) => ids.slice(0, 400).map((id) => `${p}:${id}`));
+  const set = [...new Set([...allCurated, ...dynamic])];
+  clear(dl, set.map((id) => h('option', { value: id })));
 }
 
 function appSettingsDialog() {
@@ -776,7 +906,9 @@ function appSettingsDialog() {
   const dlg = dialog('dlg', t('appSettings'), [
     h('p', { class: 'small muted' }, t('settingsNote')),
     h('fieldset', {}, h('legend', {}, t('providers')), rows),
-    h('fieldset', {}, h('legend', {}, t('models')), h('div', { class: 'grid2' }, ROLES.map((r) => field(t(`role_${r}`), models[r]))),
+    h('fieldset', {}, h('legend', {}, t('models')),
+      presetBar(models),
+      h('div', { class: 'grid2' }, ROLES.map((r) => modelField(t(`role_${r}`), models[r]))),
       h('small', { class: 'muted' }, t('calibrateNote'))),
     h('fieldset', {}, h('legend', {}, 'Claude Code'), field(t('projectsRoot'), root)),
     h('fieldset', {}, h('legend', {}, t('autopilot')), field(t('globalBudget'), budget, spend)),
@@ -934,6 +1066,7 @@ function wire() {
 async function main() {
   wire();
   applyI18n();
+  refreshModelList();
   try {
     S.providers = await pushSettings(S.settings);
     warnMissingKeys();
