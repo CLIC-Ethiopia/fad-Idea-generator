@@ -714,7 +714,7 @@ const PROVIDER_LABELS = {
   openrouter: 'OpenRouter', anthropic: 'Anthropic', openai: 'OpenAI', gemini: 'Google Gemini (Free tier)',
   azure: 'Azure OpenAI / Microsoft Foundry (Copilot models)', ollama: 'Ollama', mlx: 'MLX (mlx_lm.server)', lmstudio: 'LM Studio', custom: 'OpenAI-compatible',
 };
-const HAS_URL = ['ollama', 'mlx', 'lmstudio', 'gemini', 'azure', 'custom'];
+const HAS_URL = ['ollama', 'mlx', 'lmstudio', 'azure', 'custom'];
 const HAS_KEY = ['openrouter', 'anthropic', 'openai', 'gemini', 'azure', 'custom'];
 const modelCatalog = new Map();
 

@@ -11,7 +11,7 @@ export const PROVIDER_IDS = ['openrouter', 'anthropic', 'openai', 'gemini', 'azu
 const SONNET = 'openrouter:anthropic/claude-sonnet-5.5';
 export const DEFAULTS = {
   keys: {},
-  baseUrls: { ollama: 'http://localhost:11434', mlx: 'http://localhost:8080/v1', lmstudio: 'http://localhost:1234/v1', gemini: '', azure: '', custom: '' },
+  baseUrls: { ollama: 'http://localhost:11434', mlx: 'http://localhost:8080/v1', lmstudio: 'http://localhost:1234/v1', azure: '', custom: '' },
   models: { distill: SONNET, expand: SONNET, combine: SONNET, judge: SONNET, summary: SONNET, research: SONNET, x: 'openrouter:x-ai/grok-4.3', brief: SONNET },
   projectsRoot: '~/Projekt/idea-projects',
   maxUsdPerDay: 5,

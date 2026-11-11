@@ -28,7 +28,6 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
     ollama: 'http://localhost:11434',
     mlx: 'http://localhost:8080/v1',
     lmstudio: 'http://localhost:1234/v1',
-    gemini: '',
     azure: '',
     custom: '',
   },
@@ -168,7 +167,9 @@ async function openaiChat(settings: AppSettings, p: ProviderId, model: string, r
   if (p === 'openrouter') Object.assign(headers, { 'HTTP-Referer': 'http://localhost:8300', 'X-Title': 'Idea Generator 2' });
 
   let jsonMode: 'schema' | 'prompt' = p === 'mlx' ? 'prompt' : 'schema';
-  const body: any = { model, temperature: r.temperature, max_tokens: r.maxTokens ?? 1200 };
+  let noSystem = false;
+  const cleanModel = p === 'gemini' ? model.replace(/^models\//, '') : model;
+  const body: any = { model: cleanModel, temperature: r.temperature, max_tokens: r.maxTokens ?? 1200 };
   if (p === 'openrouter') {
     body.reasoning = { enabled: false };
     body.usage = { include: true };
@@ -176,10 +177,12 @@ async function openaiChat(settings: AppSettings, p: ProviderId, model: string, r
   }
   let lastError = '';
   for (let attempt = 0, adjustments = 0; attempt < 3; ) {
-    body.messages = [
-      { role: 'system', content: r.system + (jsonMode === 'prompt' ? promptJsonRule(r.schema) : '') },
-      { role: 'user', content: r.user },
-    ];
+    body.messages = noSystem
+      ? [{ role: 'user', content: `${r.system}\n\n${r.user}${jsonMode === 'prompt' ? promptJsonRule(r.schema) : ''}` }]
+      : [
+          { role: 'system', content: r.system + (jsonMode === 'prompt' ? promptJsonRule(r.schema) : '') },
+          { role: 'user', content: r.user },
+        ];
     if (jsonMode === 'schema') body.response_format = { type: 'json_schema', json_schema: { name: r.schemaName, strict: true, schema: r.schema } };
     else delete body.response_format;
 
@@ -199,6 +202,7 @@ async function openaiChat(settings: AppSettings, p: ProviderId, model: string, r
       if (body.max_tokens && /max_tokens/i.test(text) && /max_completion_tokens/i.test(text)) {
         body.max_completion_tokens = body.max_tokens; delete body.max_tokens; continue;
       }
+      if (/developer instruction/i.test(text)) { noSystem = true; continue; }
       if (jsonMode === 'schema' && /response_format|json_schema|structured/i.test(text)) { jsonMode = 'prompt'; continue; }
     }
     attempt++;
@@ -333,7 +337,15 @@ export async function listModels(settings: AppSettings, p: ProviderId): Promise<
     if (!base) throw new ProviderError('no_base_url', 'Set a base URL first');
     if (PROVIDERS[p].needsKey && !key) throw new ProviderError('no_key', 'No API key');
     const headers: Record<string, string> = key ? (p === 'azure' ? { 'api-key': key } : { Authorization: `Bearer ${key}` }) : {};
-    return ((await get(`${base}/models`, headers)).data ?? []).map((m: any) => m.id).sort();
+    const raw = ((await get(`${base}/models`, headers)).data ?? []).map((m: any) => String(m.id ?? ''));
+    if (p === 'gemini') {
+      const chatModels = raw
+        .map((id: string) => id.replace(/^models\//, ''))
+        .filter((id: string) => id.startsWith('gemini-') && !id.includes('embedding') && !id.includes('imagen') && !id.includes('aqa') && !id.includes('whisper'));
+      const order = (s: string) => (s.includes('2.5-flash') ? 0 : s.includes('2.0-flash') ? 1 : s.includes('flash') ? 2 : s.includes('pro') ? 3 : 4);
+      return [...new Set(chatModels)].sort((a: string, b: string) => order(a) - order(b) || b.localeCompare(a));
+    }
+    return raw.sort();
   } catch (e: any) {
     if (e instanceof ProviderError) throw e;
     throw new ProviderError('unreachable', `${PROVIDERS[p].label}: ${e?.cause?.code ?? e.message}`);
