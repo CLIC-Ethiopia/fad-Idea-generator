@@ -107,7 +107,7 @@ function baseFor(settings: AppSettings, p: ProviderId) {
 
 /** Finds an active provider that has an API key configured (or is local). */
 export function getActiveProvider(settings: AppSettings): { provider: ProviderId; defaultModel: string } | null {
-  if (keyFor(settings, 'gemini')) return { provider: 'gemini', defaultModel: 'gemini-2.5-flash' };
+  if (keyFor(settings, 'gemini')) return { provider: 'gemini', defaultModel: 'gemini-2.0-flash' };
   if (keyFor(settings, 'openai')) return { provider: 'openai', defaultModel: 'gpt-4o-mini' };
   if (keyFor(settings, 'anthropic')) return { provider: 'anthropic', defaultModel: 'claude-3-5-haiku-latest' };
   if (keyFor(settings, 'openrouter')) return { provider: 'openrouter', defaultModel: 'anthropic/claude-sonnet-5.5' };
@@ -167,13 +167,25 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /** Pull a JSON object out of a model answer: drop <think> blocks and code fences, take the outermost braces. */
 export function extractJson(text: string) {
-  const t = text.replace(/<think>[\s\S]*?<\/think>/gi, '').replace(/```(?:json)?/gi, '').trim();
+  let t = text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+  const match = t.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  if (match) t = match[1].trim();
+  else t = t.replace(/```(?:json)?/gi, '').trim();
+
   try {
     return JSON.parse(t);
   } catch {
     const a = t.indexOf('{');
     const b = t.lastIndexOf('}');
-    if (a >= 0 && b > a) return JSON.parse(t.slice(a, b + 1));
+    if (a >= 0 && b > a) {
+      let sub = t.slice(a, b + 1);
+      try {
+        return JSON.parse(sub);
+      } catch {
+        sub = sub.replace(/,\s*([}\]])/g, '$1');
+        return JSON.parse(sub);
+      }
+    }
     throw new Error(`No JSON object in answer: ${t.slice(0, 160)}`);
   }
 }
@@ -200,10 +212,10 @@ async function openaiChat(settings: AppSettings, p: ProviderId, model: string, r
   let cleanModel = p === 'gemini' ? model.replace(/^models\//, '') : model;
   if (p === 'gemini') {
     if (!cleanModel || cleanModel.includes('claude') || cleanModel.includes('sonnet') || cleanModel.includes('gpt-') || cleanModel.includes('grok') || cleanModel.includes('antigravity')) {
-      cleanModel = 'gemini-2.5-flash';
+      cleanModel = 'gemini-2.0-flash';
     }
   }
-  const body: any = { model: cleanModel, temperature: r.temperature, max_tokens: r.maxTokens ?? 1200 };
+  const body: any = { model: cleanModel, temperature: r.temperature, max_tokens: Math.max(r.maxTokens ?? 1200, 1500) };
   if (p === 'openrouter') {
     body.reasoning = { enabled: false };
     body.usage = { include: true };
@@ -248,6 +260,18 @@ async function openaiChat(settings: AppSettings, p: ProviderId, model: string, r
     if (!res.ok) {
       lastError = `${PROVIDERS[p].label} ${res.status}: ${text.slice(0, 300)}`;
       if (res.status === 401 || res.status === 403) throw new ProviderError('bad_key', lastError);
+      // Automatically recover from high demand / 503 spikes on Gemini
+      if (p === 'gemini' && (res.status === 503 || /high demand|unavailable|overloaded/i.test(text))) {
+        if (body.model.includes('2.5')) {
+          body.model = 'gemini-2.0-flash';
+          await sleep(500);
+          continue;
+        } else if (body.model.includes('2.0')) {
+          body.model = 'gemini-1.5-flash';
+          await sleep(500);
+          continue;
+        }
+      }
       if (res.status === 429 || res.status >= 500) { await sleep(1000 * attempt); continue; }
       throw new ProviderError('provider_error', lastError);
     }
@@ -264,6 +288,7 @@ async function openaiChat(settings: AppSettings, p: ProviderId, model: string, r
     } catch (e: any) {
       lastError = e.message;
       if (jsonMode === 'schema') jsonMode = 'prompt';
+      if (body.max_tokens) body.max_tokens = Math.max(body.max_tokens * 2, 2500);
     }
   }
   throw new ProviderError('provider_error', lastError || `${PROVIDERS[p].label} failed`);

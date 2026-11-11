@@ -6,6 +6,7 @@
 // idea's whole family line. Everything is drawn on one <canvas>.
 
 import { medal, scoreSum } from './score.js';
+import { t } from './i18n.js';
 
 // Validated with the dataviz palette checks against the canvas background (#0f1116).
 export const KIND_COLORS = { seed: '#3987e5', expand: '#199e70', combine: '#9085e9', guest: '#d55181' };
@@ -409,14 +410,14 @@ export class Graph {
 
     if (this.nodes.size === 0 && this.ghosts.length === 0) {
       ctx.save();
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
       ctx.font = `500 15px ${FONT}`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText('🌱 Skriv en idé eller klistra in en länk nedan för att börja', w / 2, h / 2 - 12);
+      ctx.fillText(t('canvasEmpty'), w / 2, h / 2 - 12);
       ctx.font = `400 13px ${FONT}`;
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.28)';
-      ctx.fillText('(Type an idea or paste a link below to start your idea graph)', w / 2, h / 2 + 16);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+      ctx.fillText(t('canvasEmptySub'), w / 2, h / 2 + 16);
       ctx.restore();
     }
   }

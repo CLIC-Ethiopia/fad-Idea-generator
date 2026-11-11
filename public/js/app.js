@@ -601,9 +601,13 @@ async function newBoardDialog(first = false) {
   const title = h('input', { required: true, placeholder: t('newBoard') });
   const goal = h('textarea', { rows: 3, placeholder: t('goalPlaceholder') });
   const tpl = h('select', {}, S.templates.map((x) => h('option', { value: x.id }, localName(x.name))));
+  const autoSeed = h('input', { type: 'checkbox', checked: true });
   const dlg = dialog('dlg', t('newBoard'), [
     first ? h('p', {}, t('firstRun')) : null,
-    field(t('title'), title), field(t('goal'), goal), field(t('template'), tpl),
+    field(t('title'), title),
+    field(t('goal'), goal),
+    field(t('template'), tpl),
+    h('label', { class: 'check', style: 'margin-top: 8px;' }, autoSeed, t('autoSeedOnCreate')),
   ], [
     h('button', { class: 'btn', value: 'cancel' }, t('cancel')),
     h('button', {
@@ -611,7 +615,17 @@ async function newBoardDialog(first = false) {
       onclick: async (e) => {
         e.preventDefault();
         try {
-          const { board } = await api('POST', '/api/boards', { title: title.value, goal: goal.value, templateId: Number(tpl.value), lang: getLang() });
+          const tVal = title.value.trim();
+          const gVal = goal.value.trim();
+          const { board } = await api('POST', '/api/boards', { title: tVal, goal: gVal, templateId: Number(tpl.value), lang: getLang() });
+          if (autoSeed.checked && tVal) {
+            try {
+              const seedText = gVal ? `${tVal}: ${gVal}` : tVal;
+              await api('POST', `/api/boards/${board.id}/seed`, { text: seedText, x: 0, y: 0 });
+            } catch (seedErr) {
+              console.warn('Initial seed creation note:', seedErr);
+            }
+          }
           dlg.close();
           await loadBoards();
           await openBoard(board.id);
@@ -723,9 +737,9 @@ const CURATED_MODELS = [
   {
     group: 'Google Gemini (Free Tier)',
     models: [
-      { id: 'gemini:gemini-2.5-flash', label: 'gemini:gemini-2.5-flash (Recommended · Fast & Smart)' },
-      { id: 'gemini:gemini-2.0-flash', label: 'gemini:gemini-2.0-flash' },
-      { id: 'gemini:gemini-1.5-flash', label: 'gemini:gemini-1.5-flash' },
+      { id: 'gemini:gemini-2.0-flash', label: 'gemini:gemini-2.0-flash (Recommended · Fast & Stable)' },
+      { id: 'gemini:gemini-1.5-flash', label: 'gemini:gemini-1.5-flash (Ultra Reliable)' },
+      { id: 'gemini:gemini-2.5-flash', label: 'gemini:gemini-2.5-flash (Preview)' },
       { id: 'gemini:gemini-2.5-pro', label: 'gemini:gemini-2.5-pro (Deep reasoning)' },
     ],
   },
@@ -847,8 +861,9 @@ function presetBar(inputs) {
       },
     },
       h('option', { value: '' }, t('presetModel')),
-      h('option', { value: 'gemini:gemini-2.5-flash' }, '⭐ Google Gemini: gemini-2.5-flash (Free Tier)'),
-      h('option', { value: 'gemini:gemini-2.0-flash' }, '⭐ Google Gemini: gemini-2.0-flash (Free Tier)'),
+      h('option', { value: 'gemini:gemini-2.0-flash' }, '⭐ Google Gemini: gemini-2.0-flash (Recommended · Free Tier)'),
+      h('option', { value: 'gemini:gemini-1.5-flash' }, '⭐ Google Gemini: gemini-1.5-flash (Ultra Reliable · Free Tier)'),
+      h('option', { value: 'gemini:gemini-2.5-flash' }, '⭐ Google Gemini: gemini-2.5-flash (Preview)'),
       h('option', { value: 'openrouter:google/gemini-2.0-flash-exp:free' }, '🆓 OpenRouter: gemini-2.0-flash-exp:free (Free)'),
       h('option', { value: 'openrouter:meta-llama/llama-3.3-70b-instruct:free' }, '🆓 OpenRouter: llama-3.3-70b-instruct:free (Free)'),
       h('option', { value: 'openrouter:qwen/qwen-2.5-72b-instruct:free' }, '🆓 OpenRouter: qwen-2.5-72b-instruct:free (Free)'),
