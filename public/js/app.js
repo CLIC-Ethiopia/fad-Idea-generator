@@ -31,6 +31,10 @@ const graph = new Graph($('#canvas'), {
     S.selected = id;
     graph.select(id);
     renderPanel();
+    updateCanvasActions();
+  },
+  camChanged() {
+    updateCanvasActions();
   },
   hover(id, e) {
     const card = $('#hovercard');
@@ -49,9 +53,64 @@ const graph = new Graph($('#canvas'), {
     S.createAt = { x, y };
     $('#seed-input').focus();
   },
-  moved: debounce(() => savePositions(), 1200),
+  moved: debounce(() => {
+    savePositions();
+    updateCanvasActions();
+  }, 1200),
   dropLead: (id, x, y) => seedLead(id, x, y),
 });
+
+function updateCanvasActions() {
+  const bar = $('#canvas-actions');
+  if (!bar) return;
+  if (!S.selected) {
+    bar.hidden = true;
+    bar.classList.remove('show');
+    return;
+  }
+  const idea = S.ideas.get(S.selected);
+  const n = graph.nodes.get(S.selected);
+  if (!idea || !n) {
+    bar.hidden = true;
+    bar.classList.remove('show');
+    return;
+  }
+  const stage = $('#stage').getBoundingClientRect();
+  const pt = graph.toScreen(n.x, n.y - n.r);
+  const barW = bar.offsetWidth || 320;
+  const barH = bar.offsetHeight || 38;
+
+  // Clamp horizontally so bar stays strictly inside the canvas stage
+  const minX = barW / 2 + 16;
+  const maxX = stage.width - barW / 2 - 16;
+  const posX = Math.max(minX, Math.min(maxX, pt.x - stage.left));
+
+  // Determine vertical position: if near top edge, display bar below the node
+  let posY = pt.y - stage.top;
+  if (posY - barH - 14 < 12) {
+    const ptBottom = graph.toScreen(n.x, n.y + n.r);
+    posY = ptBottom.y - stage.top + barH + 20;
+  }
+  posY = Math.max(barH + 12, Math.min(stage.height - 16, posY));
+
+  bar.style.left = `${posX}px`;
+  bar.style.top = `${posY}px`;
+  bar.hidden = false;
+  bar.classList.add('show');
+}
+
+function setViewMode(mode) {
+  graph.setViewMode(mode);
+  const btns = {
+    organic: $('#view-organic-btn'),
+    tree: $('#view-tree-btn'),
+    matrix: $('#view-matrix-btn'),
+  };
+  for (const [m, el] of Object.entries(btns)) {
+    el?.classList.toggle('active', m === mode);
+  }
+  updateCanvasActions();
+}
 // ?debug exposes the canvas for scripted demos and tests (node positions, camera).
 if (new URLSearchParams(location.search).has('debug')) window.ideagen = { graph, state: () => S };
 
@@ -175,6 +234,7 @@ async function seedFromBar(ev) {
   input.disabled = true;
   const isLink = /^(https?:\/\/|www\.)\S+$/i.test(text);
   input.value = '';
+  input.style.height = 'auto';
   input.placeholder = isLink ? t('readingPage') : text.length > 160 ? t('thinking') : input.placeholder;
   const clearGhost = graph.addGhosts([at]);
   try {
@@ -187,6 +247,7 @@ async function seedFromBar(ev) {
   } finally {
     clearGhost();
     input.disabled = false;
+    input.style.height = 'auto';
     input.placeholder = t('seedPlaceholder');
     input.focus();
   }
@@ -410,10 +471,31 @@ function renderIdea(idea) {
     h('div', { class: 'actions' },
       h('button', { class: 'btn primary', title: t('expandHint'), onclick: () => expand(idea.id) }, `＋ ${t('expand')}`),
       h('button', { class: 'btn', onclick: () => { graph.setPick(idea.id); toast(t('combinePick')); } }, `⚡ ${t('combineWith')}`),
+      h('button', { class: 'btn', title: 'Devil\'s Advocate stress-test', onclick: () => runCritique(idea.id) }, '⚖️ Critique'),
       h('button', { class: 'btn', onclick: () => rejudge(idea.id) }, t('rejudge')),
       h('button', { class: 'btn', title: t('announceHint'), onclick: () => announceDialog(idea) }, `📣 ${t('announce')}`),
       h('button', { class: 'btn', title: t('spinoffHint'), onclick: () => spinoff(idea) }, `⤴ ${t('spinoff')}`),
     ),
+    idea.critique
+      ? h('div', { class: 'critique-box' },
+          h('h4', {}, '⚖️ Devil\'s Advocate Critique'),
+          h('div', { class: 'critique-verdict' }, idea.critique.verdict),
+          idea.critique.fatalFlaws?.length
+            ? [h('strong', { class: 'small muted' }, 'Fatal Flaws & Vulnerabilities:'),
+               h('ul', { class: 'critique-list' }, idea.critique.fatalFlaws.map((f) => h('li', {}, f)))]
+            : null,
+          idea.critique.stressTests?.length
+            ? [h('strong', { class: 'small muted' }, 'Stress-Test Scenarios:'),
+               h('ul', { class: 'critique-list' }, idea.critique.stressTests.map((s) => h('li', {}, s)))]
+            : null,
+          idea.critique.remedies?.length
+            ? h('div', { class: 'critique-remedies' },
+                h('h5', {}, 'Hardening Remedies:'),
+                h('ul', { class: 'critique-list' }, idea.critique.remedies.map((r) => h('li', {}, r))),
+              )
+            : null,
+        )
+      : null,
     h('div', { class: 'project' },
       idea.projectPath
         ? [
@@ -442,6 +524,36 @@ function renderIdea(idea) {
 async function rejudge(id) {
   try {
     await api('POST', `/api/ideas/${id}/judge`, {});
+  } catch (e) {
+    fail(e);
+  }
+}
+
+async function runCritique(id) {
+  const idea = S.ideas.get(id);
+  if (!idea) return;
+  toast('Running Devil\'s Advocate stress-test...', 'info', 5000);
+  try {
+    const res = await api('POST', `/api/ideas/${id}/critique`, {});
+    idea.critique = res.critique;
+    renderPanel();
+    updateCanvasActions();
+    toast('Devil\'s Advocate critique complete', 'good', 5000);
+  } catch (e) {
+    fail(e);
+  }
+}
+
+async function toggleGold(id) {
+  const idea = S.ideas.get(id);
+  if (!idea) return;
+  const next = idea.medalOverride === 3 ? null : 3;
+  try {
+    await api('PATCH', `/api/ideas/${id}`, { medalOverride: next });
+    idea.medalOverride = next;
+    graph.upsert(idea);
+    renderPanel();
+    updateCanvasActions();
   } catch (e) {
     fail(e);
   }
@@ -1064,6 +1176,129 @@ async function exportBoard() {
   }
 }
 
+function exportPitchDeck() {
+  const b = S.board;
+  if (!b) return;
+  const ideas = ideaList();
+  const sorted = [...ideas].sort((a, b) => (scoreSum(b) ?? 0) - (scoreSum(a) ?? 0));
+  const topIdeas = sorted.slice(0, 5);
+
+  let md = `# ${b.title}\n`;
+  md += `*Executive Pitch Deck & Strategic Innovation Synthesis*\n`;
+  md += `*Generated: ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}*\n\n`;
+
+  md += `---\n\n`;
+  md += `## 1. Executive Summary & Problem Landscape\n\n`;
+  md += `> **Strategic Directive:** ${b.goal || 'Explore frontier breakthrough solutions.'}\n\n`;
+  md += `- **Exploration Depth:** ${ideas.length} evolutionary branches evaluated\n`;
+  md += `- **Top Breakthroughs Identified:** ${topIdeas.length} gold/silver tier opportunities\n\n`;
+
+  md += `---\n\n`;
+  md += `## 2. Core Breakthrough Concepts\n\n`;
+  topIdeas.forEach((idea, idx) => {
+    const m = medal(idea);
+    const mIcon = m ? MEDAL_ICON[m] : '';
+    const sum = scoreSum(idea);
+    md += `### ${idx + 1}. ${idea.title} ${mIcon}\n`;
+    if (sum != null) md += `**Jury Score:** ${sum}/15\n\n`;
+    if (idea.pitch) md += `**The Concept:**\n${idea.pitch}\n\n`;
+    if (idea.jury) {
+      md += `**Evaluation Breakdown:**\n`;
+      Object.entries(idea.jury).forEach(([crit, score]) => {
+        md += `- **${crit}:** ${score}/5\n`;
+      });
+      md += `\n`;
+    }
+    if (idea.critique) {
+      md += `**Devil's Advocate Stress-Test:**\n`;
+      md += `*Verdict:* ${idea.critique.verdict}\n\n`;
+      if (idea.critique.fatalFlaws?.length) {
+        md += `*Critical Vulnerabilities:*\n`;
+        idea.critique.fatalFlaws.forEach((f) => { md += `- ${f}\n`; });
+        md += `\n`;
+      }
+      if (idea.critique.remedies?.length) {
+        md += `*Hardening Mitigations:*\n`;
+        idea.critique.remedies.forEach((r) => { md += `- ${r}\n`; });
+        md += `\n`;
+      }
+    }
+  });
+
+  md += `---\n\n`;
+  md += `## 3. Go-To-Market Execution & Roadmap\n\n`;
+  md += `1. **Phase 1 (Proof-of-Concept):** Prototype the highest-feasibility quick wins.\n`;
+  md += `2. **Phase 2 (Stress Hardening):** Address Devil's Advocate failure modes identified during evaluation.\n`;
+  md += `3. **Phase 3 (Scale & Integration):** Wire breakthroughs directly into target production systems.\n\n`;
+
+  const blob = new Blob([md], { type: 'text/markdown' });
+  const a = h('a', {
+    href: URL.createObjectURL(blob),
+    download: `${b.title.replace(/[^\p{L}\p{N}]+/gu, '-').toLowerCase()}-pitch-deck.md`,
+  });
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast('Executive Pitch Deck exported successfully', 'good', 4000);
+}
+
+let cmdSelectedIndex = 0;
+let cmdFilteredList = [];
+
+function openCmdPalette() {
+  const dlg = $('#cmd-palette');
+  const input = $('#cmd-input');
+  if (!dlg || !input) return;
+  input.value = '';
+  cmdSelectedIndex = 0;
+  renderCmdResults('');
+  dlg.showModal();
+  input.focus();
+}
+
+function renderCmdResults(query) {
+  const q = query.toLowerCase().trim().replace(/^\//, '');
+  const listEl = $('#cmd-results');
+  if (!listEl) return;
+
+  const ALL_COMMANDS = [
+    { id: 'organic', label: 'View: Organic Freeform Canvas', icon: '🌐', badge: 'View', action: () => setViewMode('organic') },
+    { id: 'tree', label: 'View: Hierarchical Lineage Tree', icon: '🌳', badge: 'View', action: () => setViewMode('tree') },
+    { id: 'matrix', label: 'View: 2x2 Impact vs Feasibility Matrix', icon: '📊', badge: 'View', action: () => setViewMode('matrix') },
+    { id: 'expand', label: 'Expand Selected Idea', icon: '⚡', badge: 'Tab', action: () => S.selected && expand(S.selected) },
+    { id: 'critique', label: 'Devil\'s Advocate Stress-Test', icon: '⚖️', badge: 'Critique', action: () => S.selected && runCritique(S.selected) },
+    { id: 'gold', label: 'Toggle Gold Bookmark Medal', icon: '⭐', badge: 'Key: G', action: () => S.selected && toggleGold(S.selected) },
+    { id: 'fit', label: 'Fit Canvas to Viewport', icon: '⤢', badge: 'Space / F', action: () => graph.fit() },
+    { id: 'pitch', label: 'Export Executive Pitch Deck', icon: '📑', badge: 'Export', action: () => exportPitchDeck() },
+    { id: 'export', label: 'Export Board Markdown', icon: '📥', badge: 'Export', action: () => exportBoard() },
+    { id: 'report', label: 'Open Innovation Report', icon: '📈', badge: 'Report', action: () => openReport({ onOpenIdea, onOpenBoard: openBoard }) },
+    { id: 'dashboard', label: 'Open Ideas Dashboard', icon: '🗂️', badge: 'Dashboard', action: () => openDashboard({ onOpenIdea }) },
+    { id: 'leads', label: 'Toggle Scouting Leads Panel', icon: '📡', badge: 'Leads', action: () => $('#leads-btn').click() },
+    { id: 'board-settings', label: 'Open Board Settings', icon: '⚙️', badge: 'Settings', action: () => boardSettingsDialog() },
+    { id: 'app-settings', label: 'Open API Keys & Settings', icon: '🔑', badge: 'Keys', action: () => appSettingsDialog() },
+    { id: 'seed', label: 'Focus Seed Input Bar', icon: '🌱', badge: 'Enter', action: () => $('#seed-input').focus() },
+  ];
+
+  cmdFilteredList = ALL_COMMANDS.filter((c) =>
+    c.label.toLowerCase().includes(q) || c.id.toLowerCase().includes(q) || c.badge.toLowerCase().includes(q),
+  );
+  if (cmdSelectedIndex >= cmdFilteredList.length) cmdSelectedIndex = 0;
+
+  clear(listEl,
+    cmdFilteredList.length === 0
+      ? h('div', { class: 'cmd-item muted' }, 'No matching commands found')
+      : cmdFilteredList.map((c, i) => h('div', {
+          class: `cmd-item ${i === cmdSelectedIndex ? 'active' : ''}`,
+          onclick: () => {
+            $('#cmd-palette').close();
+            c.action();
+          },
+        },
+        h('span', { class: 'cmd-item-label' }, `${c.icon} ${c.label}`),
+        h('span', { class: 'cmd-badge' }, c.badge),
+      )),
+  );
+}
+
 function warnMissingKeys() {
   const status = new Map((S.providers?.providers ?? []).map((p) => [p.id, p]));
   for (const p of providersInUse(S.settings)) {
@@ -1078,11 +1313,23 @@ function renderAll() {
   renderBoardMenu();
   renderPanel();
   renderLeads();
-  $('#lang-btn').textContent = getLang() === 'sv' ? 'EN' : 'SV';
+  const langBtn = $('#lang-btn');
+  if (langBtn) langBtn.textContent = 'EN';
 }
 
 function wire() {
   $('#seedbar').addEventListener('submit', seedFromBar);
+  const seedInput = $('#seed-input');
+  seedInput?.addEventListener('input', () => {
+    seedInput.style.height = 'auto';
+    seedInput.style.height = `${Math.min(seedInput.scrollHeight, 88)}px`;
+  });
+  seedInput?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      seedFromBar(e);
+    }
+  });
   $('#board-menu-btn').addEventListener('click', (e) => {
     e.stopPropagation();
     const menu = $('#board-menu');
@@ -1108,25 +1355,120 @@ function wire() {
   $('#export-btn').addEventListener('click', exportBoard);
   $('#board-settings-btn').addEventListener('click', boardSettingsDialog);
   $('#app-settings-btn').addEventListener('click', appSettingsDialog);
-  $('#lang-btn').addEventListener('click', () => { setLang(getLang() === 'sv' ? 'en' : 'sv'); renderAll(); });
   $('#zoom-in').addEventListener('click', () => graph.zoomBy(1.25));
   $('#zoom-out').addEventListener('click', () => graph.zoomBy(0.8));
   $('#fit-btn').addEventListener('click', () => graph.fit());
+
+  // View Mode buttons
+  $('#view-organic-btn')?.addEventListener('click', () => setViewMode('organic'));
+  $('#view-tree-btn')?.addEventListener('click', () => setViewMode('tree'));
+  $('#view-matrix-btn')?.addEventListener('click', () => setViewMode('matrix'));
+
+  // Canvas floating action buttons
+  $('#ca-expand')?.addEventListener('click', () => S.selected && expand(S.selected));
+  $('#ca-breed')?.addEventListener('click', () => {
+    if (!S.selected) return;
+    graph.setPick(S.selected);
+    toast(t('combinePick'));
+  });
+  $('#ca-critique')?.addEventListener('click', () => S.selected && runCritique(S.selected));
+  $('#ca-gold')?.addEventListener('click', () => S.selected && toggleGold(S.selected));
+  $('#ca-close')?.addEventListener('click', () => graph.h.select(null));
+
+  // Command palette input & arrow keys
+  $('#cmd-input')?.addEventListener('input', (e) => {
+    renderCmdResults(e.target.value);
+  });
+  $('#cmd-input')?.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (cmdFilteredList.length) {
+        cmdSelectedIndex = (cmdSelectedIndex + 1) % cmdFilteredList.length;
+        renderCmdResults($('#cmd-input').value);
+      }
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (cmdFilteredList.length) {
+        cmdSelectedIndex = (cmdSelectedIndex - 1 + cmdFilteredList.length) % cmdFilteredList.length;
+        renderCmdResults($('#cmd-input').value);
+      }
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (cmdFilteredList[cmdSelectedIndex]) {
+        $('#cmd-palette').close();
+        cmdFilteredList[cmdSelectedIndex].action();
+      }
+    } else if (e.key === 'Escape') {
+      $('#cmd-palette').close();
+    }
+  });
+
+  // Global hotkeys
   document.addEventListener('keydown', (e) => {
     const typing = /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName ?? '');
     if (e.key === 'Escape') {
       if (graph.pick) graph.setPick(null);
       else if (S.exhibit) leaveExhibit();
+      else if ($('#cmd-palette')?.open) $('#cmd-palette').close();
       else if (!document.querySelector('dialog[open]')) graph.h.select(null);
+      return;
     }
     if (typing) return;
-    if (e.key === '/') { e.preventDefault(); $('#seed-input').focus(); }
-    if (e.key === 'f') graph.fit();
+
+    if (e.key === '/') {
+      e.preventDefault();
+      openCmdPalette();
+      return;
+    }
+    if (e.key === 'Tab') {
+      if (S.selected) {
+        e.preventDefault();
+        expand(S.selected);
+      }
+      return;
+    }
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      $('#seed-input').focus();
+      return;
+    }
+    if (e.key === ' ' || e.key === 'f' || e.key === 'F') {
+      e.preventDefault();
+      graph.fit();
+      return;
+    }
+    if (e.key === 'g' || e.key === 'G') {
+      if (S.selected) {
+        e.preventDefault();
+        toggleGold(S.selected);
+      }
+      return;
+    }
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+      if (S.selected) {
+        e.preventDefault();
+        const idea = S.ideas.get(S.selected);
+        if (idea && confirm(t('confirmDelete', { t: idea.title }))) {
+          api('DELETE', `/api/ideas/${idea.id}`).catch(fail);
+        }
+      }
+      return;
+    }
+    if (['1', '2', '3', '4', '5'].includes(e.key)) {
+      if (S.selected) {
+        e.preventDefault();
+        const num = Number(e.key);
+        const medalVal = num >= 5 ? 3 : num >= 4 ? 2 : num >= 3 ? 1 : 0;
+        api('PATCH', `/api/ideas/${S.selected}`, { medalOverride: medalVal }).catch(fail);
+      }
+      return;
+    }
   });
 }
 
 async function main() {
   wire();
+  updateCanvasActions();
   applyI18n();
   refreshModelList();
   try {
@@ -1134,7 +1476,7 @@ async function main() {
     warnMissingKeys();
     // Background discovery of live models for configured providers
     for (const p of S.providers?.providers ?? []) {
-      if (p.keySource || p.local) {
+      if (p.keySource || (p.local && providersInUse(S.settings).includes(p.id))) {
         api('POST', `/api/providers/${p.id}/models`, {}).then(({ models }) => {
           if (models?.length) {
             modelCatalog.set(p.id, models);

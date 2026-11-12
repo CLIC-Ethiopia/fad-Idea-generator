@@ -23,6 +23,11 @@
       <span id="board-origin"></span>
     </div>
     <div class="bar-right">
+      <div id="view-mode-group" class="view-mode-group" role="group" aria-label="View Mode">
+        <button id="view-organic-btn" class="view-btn active" title="Organic Freeform Canvas" data-mode="organic">🌐 Organic</button>
+        <button id="view-tree-btn" class="view-btn" title="Hierarchical Lineage Tree" data-mode="tree">🌳 Tree</button>
+        <button id="view-matrix-btn" class="view-btn" title="2x2 Impact vs Feasibility Matrix" data-mode="matrix">📊 2x2 Matrix</button>
+      </div>
       <button id="mode-toggle" class="mode" aria-pressed="false"></button>
       <span id="ap-status" class="ap-chip" aria-live="polite"></span>
       <button id="leads-btn" class="btn ghost" aria-expanded="false" data-i18n="leads"></button>
@@ -32,7 +37,6 @@
       <button id="export-btn" class="btn ghost" data-i18n="export"></button>
       <button id="board-settings-btn" class="icon-btn" data-i18n-title="boardSettings">⚙</button>
       <button id="app-settings-btn" class="icon-btn" data-i18n-title="appSettings">🔑</button>
-      <button id="lang-btn" class="btn ghost small">EN</button>
     </div>
   </header>
 
@@ -40,13 +44,20 @@
     <aside id="leads-panel" hidden></aside>
     <div id="stage">
       <canvas id="canvas"></canvas>
+      <div id="canvas-actions" class="canvas-actions" hidden>
+        <button id="ca-expand" class="ca-btn" title="Expand node (Tab)">⚡ Expand</button>
+        <button id="ca-breed" class="ca-btn" title="Breed / Combine with another node">🔗 Breed</button>
+        <button id="ca-critique" class="ca-btn" title="Devil's Advocate Stress-Test">⚖️ Critique</button>
+        <button id="ca-gold" class="ca-btn" title="Toggle Gold Bookmark (G)">⭐ Gold</button>
+        <button id="ca-close" class="ca-close" title="Close action bar">✕</button>
+      </div>
       <div id="zoom">
         <button id="zoom-in" class="icon-btn" aria-label="+">＋</button>
         <button id="zoom-out" class="icon-btn" aria-label="−">－</button>
         <button id="fit-btn" class="icon-btn" data-i18n-title="fit">⤢</button>
       </div>
       <form id="seedbar" autocomplete="off">
-        <input id="seed-input" data-i18n-ph="seedPlaceholder" aria-label="Seed">
+        <textarea id="seed-input" rows="1" data-i18n-ph="seedPlaceholder" aria-label="Seed" placeholder="Type a seed idea, question, or paste a link..."></textarea>
       </form>
       <div id="exhibit-overlay" aria-hidden="true">
         <h1 id="ex-title"></h1>
@@ -61,6 +72,21 @@
   <section id="dashboard" hidden tabindex="-1"></section>
   <section id="report" class="overlay-view" hidden tabindex="-1"></section>
   <dialog id="dlg"></dialog>
+  <dialog id="cmd-palette" class="cmd-palette">
+    <div class="cmd-box">
+      <div class="cmd-input-wrap">
+        <span class="cmd-icon">⌘</span>
+        <input id="cmd-input" placeholder="Type a command or search action (e.g. /tree, /matrix, /critique, /pitch)..." autocomplete="off" spellcheck="false">
+        <span class="cmd-esc">ESC</span>
+      </div>
+      <div id="cmd-results" class="cmd-results"></div>
+      <div class="cmd-footer">
+        <span><kbd>↑</kbd><kbd>↓</kbd> navigate</span>
+        <span><kbd>↵</kbd> select</span>
+        <span><kbd>esc</kbd> close</span>
+      </div>
+    </div>
+  </dialog>
   <div id="hovercard" role="tooltip"></div>
   <div id="viz-tip" role="tooltip"></div>
   <div id="toasts" aria-live="polite"></div>

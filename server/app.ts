@@ -192,7 +192,8 @@ export function createHandler({ repo, engine, autopilot, runtime, publicDir }: D
       try {
         return { models: await listModels(runtime.get(), id as ProviderId) };
       } catch (e: any) {
-        throw new AppError(502, e?.code ?? 'provider_error', e?.message ?? String(e));
+        const isClient = ['bad_key', 'unreachable', 'no_key', 'no_base_url'].includes(e?.code);
+        throw new AppError(isClient ? 400 : 502, e?.code ?? 'provider_error', e?.message ?? String(e));
       }
     }],
 
@@ -252,6 +253,7 @@ export function createHandler({ repo, engine, autopilot, runtime, publicDir }: D
     ['POST', /^\/api\/ideas\/(\d+)\/expand$/, ([id]) => engine.expand(+id)],
     ['POST', /^\/api\/boards\/(\d+)\/combine$/, ([id], b) => engine.combine(+id, b.a, b.b)],
     ['POST', /^\/api\/ideas\/(\d+)\/judge$/, ([id]) => engine.judge(+id)],
+    ['POST', /^\/api\/ideas\/(\d+)\/critique$/, ([id]) => engine.critique(+id)],
     ['PATCH', /^\/api\/ideas\/(\d+)$/, ([id], b) => {
       if (!('medalOverride' in b)) throw new AppError(400, 'bad_request', 'Nothing to change');
       return engine.setMedal(+id, b.medalOverride);
@@ -341,7 +343,9 @@ export function createHandler({ repo, engine, autopilot, runtime, publicDir }: D
       throw new AppError(404, 'not_found', `No route for ${req.method} ${url.pathname}`);
     } catch (e: any) {
       const status = e instanceof AppError ? e.status : 500;
-      if (status >= 500) console.error(`[${req.method} ${url.pathname}]`, e?.message ?? e);
+      if (status >= 500 && e?.code !== 'no_key' && e?.code !== 'bad_key') {
+        console.error(`[${req.method} ${url.pathname}]`, e?.message ?? e);
+      }
       send(res, status, { error: e?.message ?? 'Server error', code: e?.code ?? 'server_error' });
     }
   };

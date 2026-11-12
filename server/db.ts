@@ -92,8 +92,7 @@ CREATE TABLE IF NOT EXISTS spend (
 );
 `;
 
-// Templates for a board's creation flow. The prompts are in English; the
-// output language is decided per request (same language as the seed).
+// Templates for a board's creation flow. Prompts and names are in English.
 export const DEFAULT_TEMPLATES = [
   {
     name: 'Uppfinnaren · Inventor',
@@ -105,16 +104,16 @@ export const DEFAULT_TEMPLATES = [
       'Fuse the two ideas into ONE new concept that neither could be alone. Name the specific mechanism that connects them; do not just list both.',
   },
   {
-    name: 'Affärsstrategen · Business',
+    name: 'Strategen · Strategist',
     system:
-      'You are a sharp business strategist who has built and sold companies. You care about who pays, why now, and what makes it hard to copy.',
+      'You are a sharp business strategist who has built and scaled companies. You care about who pays, why now, and what makes it hard to copy.',
     expand:
       'Generate 3 ideas for products, services or business models that grow out of the concept. Each must say who the customer is and how money is made, and they must differ from each other.',
     combine:
       "Merge the two ideas into ONE business concept where each part strengthens the other's business model. State who pays and why.",
   },
   {
-    name: 'Omställaren · Sustainability',
+    name: 'Arkitekten · Architect',
     system:
       'You are a systems thinker working on sustainability and local communities. You favour solutions that cut resource use and that ordinary people and municipalities can start with today.',
     expand:
@@ -123,13 +122,13 @@ export const DEFAULT_TEMPLATES = [
       'Combine the two ideas into ONE solution where the sustainability gain of one multiplies the other. Be concrete about what changes.',
   },
   {
-    name: 'Galningen · Wild card',
+    name: 'Jokern · Wild Card',
     system:
-      'You are a playful, fearless provocateur. You turn assumptions upside down and find the idea nobody dares say out loud, but every idea must still be explainable in two sentences and possible to actually try.',
+      'You are a playful, fearless provocateur and product leader. You turn assumptions upside down, find high-retention hooks, and create unconventional concepts that are surprising yet viable to build.',
     expand:
-      'Generate 3 surprising, unconventional ideas that grow out of the concept. Each must break at least one obvious assumption.',
+      'Generate 3 surprising, unconventional consumer and product angles that grow out of the concept: one high-frequency utility, one bold paradigm break, and one delightfully unexpected twist.',
     combine:
-      'Crash the two ideas together into ONE unexpected concept. The stranger the connection the better, as long as it can actually be done.',
+      'Crash the two ideas together into ONE cohesive, breakthrough concept where the bold novelty of one creates the habit-forming hook for the other.',
   },
 ];
 
@@ -159,7 +158,7 @@ export function defaultConfig(template = DEFAULT_TEMPLATES[0]): BoardConfig {
     flow: { system: template.system, expand: template.expand, combine: template.combine },
     judgeGuidance: '',
     researchers: { x: { enabled: true, focus: '' }, research: { enabled: true, focus: '' } },
-    lang: 'sv',
+    lang: 'en',
     mode: 'manual',
     autopilotSeconds: 10,
     rate: { stepsPerHour: 60, usdPerDay: 1 },

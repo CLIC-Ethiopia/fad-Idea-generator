@@ -311,6 +311,19 @@ export function createEngine(deps: Deps) {
       return { idea };
     },
 
+    async critique(ideaId: number) {
+      const idea = mustIdea(ideaId);
+      const board = mustBoard(idea.boardId);
+      const { critique } = await call(board.id, () =>
+        llm.critique({
+          model: modelFor(board, 'judge'),
+          idea,
+          goal: board.goal,
+        }),
+      );
+      return { ideaId, critique };
+    },
+
     deleteIdea(ideaId: number) {
       const idea = repo.getIdea(ideaId);
       const ok = repo.deleteIdea(ideaId);

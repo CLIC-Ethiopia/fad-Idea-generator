@@ -210,27 +210,54 @@ const DICT = {
     err_no_search: '{m}', err_url_unreadable: 'Could not read the link: {m}', err_url_no_text: 'The page has too little readable text.',
     err_too_few: 'The summary needs at least two ideas.', err_generic: 'Something went wrong: {m}',
     firstRun: 'Welcome! Start with a board and a goal.',
+    // View modes
+    viewOrganic: '🌐 Organic',
+    viewTree: '🌳 Tree',
+    viewMatrix: '📊 2x2 Matrix',
+    viewOrganicTitle: 'Organic Freeform Canvas (Drag ideas freely anywhere)',
+    viewTreeTitle: 'Hierarchical Tree View (Clean top-to-bottom lineage hierarchy)',
+    viewMatrixTitle: '2x2 Impact vs Feasibility Matrix (Prioritization quadrants)',
+    // 2x2 Quadrants
+    quadrantQuickWins: '🌟 Quick Wins & Champions',
+    quadrantMoonshots: '🚀 Strategic Moonshots',
+    quadrantLowHanging: '⚡ Tactical Low-Hanging Fruit',
+    quadrantDeprioritize: '⏳ Re-evaluate / Backlog',
+    axisFeasibility: 'Feasibility →',
+    axisImpact: 'Novelty & Impact ↑',
+    // Critique / Stress test
+    critique: 'Stress Test',
+    critiquing: 'Analyzing failure modes …',
+    critiqueTitle: 'Devil\'s Advocate / Stress Test',
+    critiqueAdoption: 'Customer Adoption Barrier',
+    critiqueEconomics: 'Economics & Scaling Trap',
+    critiqueTechnical: 'Technical Failure Point',
+    critiqueVerdict: 'Single Biggest Risk',
+    // Deck
+    pitchDeck: 'Pitch Deck (Markdown)',
+    pitchDeckDone: 'Pitch deck exported to Markdown',
+    // Command palette
+    cmdPalettePlaceholder: 'Type a command or search actions… (/organic, /tree, /matrix, /expand, /critique, /deck)',
   },
 };
 
-let lang = localStorage.getItem('ideagen.lang') || (navigator.language?.startsWith('sv') ? 'sv' : 'en');
+let lang = 'en';
 
-export const getLang = () => lang;
-export function setLang(l) {
-  lang = l === 'en' ? 'en' : 'sv';
-  localStorage.setItem('ideagen.lang', lang);
-  document.documentElement.lang = lang;
+export const getLang = () => 'en';
+export function setLang(_l) {
+  lang = 'en';
+  localStorage.setItem('ideagen.lang', 'en');
+  document.documentElement.lang = 'en';
 }
 
 export function t(key, vars = {}) {
-  let s = DICT[lang][key] ?? DICT.sv[key] ?? key;
+  let s = DICT.en[key] ?? DICT.sv[key] ?? key;
   for (const [k, v] of Object.entries(vars)) s = s.replaceAll(`{${k}}`, String(v));
   return s;
 }
 
 /** Fill [data-i18n] text, [data-i18n-ph] placeholders and [data-i18n-title] tooltips. */
 export function applyI18n(root = document) {
-  document.documentElement.lang = lang;
+  document.documentElement.lang = 'en';
   for (const el of root.querySelectorAll('[data-i18n]')) el.textContent = t(el.dataset.i18n);
   for (const el of root.querySelectorAll('[data-i18n-ph]')) el.placeholder = t(el.dataset.i18nPh);
   for (const el of root.querySelectorAll('[data-i18n-title]')) {
@@ -242,5 +269,5 @@ export function applyI18n(root = document) {
 /** A friendly message for an API error code. */
 export function errorText(e) {
   const key = `err_${e?.code}`;
-  return DICT[lang][key] ? t(key, { m: e.message }) : t('err_generic', { m: e?.message ?? String(e) });
+  return DICT.en[key] ? t(key, { m: e.message }) : t('err_generic', { m: e?.message ?? String(e) });
 }

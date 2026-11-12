@@ -89,15 +89,27 @@ export function mergeAppSettings(raw: any): AppSettings {
   return out;
 }
 
+export function isValidKey(k: string | undefined): boolean {
+  if (!k) return false;
+  const trimmed = k.trim();
+  if (!trimmed) return false;
+  if (/^(my_.*_key|your_.*_key|api_key|placeholder|todo|xxx|changeme)$/i.test(trimmed)) return false;
+  if (trimmed === 'MY_GEMINI_API_KEY' || trimmed === 'YOUR_API_KEY') return false;
+  return true;
+}
+
 /** Browser-entered key first, then the environment. */
 export function keyFor(settings: AppSettings, p: ProviderId): string | undefined {
-  const k = settings.keys[p] || (PROVIDERS[p].env ? process.env[PROVIDERS[p].env!] : undefined);
-  return k || undefined;
+  const browserKey = settings.keys[p]?.trim();
+  if (isValidKey(browserKey)) return browserKey;
+  const envVar = PROVIDERS[p].env ? process.env[PROVIDERS[p].env!]?.trim() : undefined;
+  if (isValidKey(envVar)) return envVar;
+  return undefined;
 }
 
 export function keySource(settings: AppSettings, p: ProviderId): 'browser' | 'env' | null {
-  if (settings.keys[p]) return 'browser';
-  if (PROVIDERS[p].env && process.env[PROVIDERS[p].env!]) return 'env';
+  if (isValidKey(settings.keys[p])) return 'browser';
+  if (PROVIDERS[p].env && isValidKey(process.env[PROVIDERS[p].env!])) return 'env';
   return null;
 }
 
@@ -278,8 +290,21 @@ async function openaiChat(settings: AppSettings, p: ProviderId, model: string, r
     }
     attempt++;
     if (!res.ok) {
-      lastError = `${PROVIDERS[p].label} ${res.status}: ${text.slice(0, 300)}`;
-      if (res.status === 401 || res.status === 403) throw new ProviderError('bad_key', lastError);
+      let errMsg = text.slice(0, 300);
+      try {
+        const parsed = JSON.parse(text);
+        if (Array.isArray(parsed) && parsed[0]?.error?.message) {
+          errMsg = parsed[0].error.message;
+        } else if (parsed?.error?.message) {
+          errMsg = parsed.error.message;
+        } else if (parsed?.message) {
+          errMsg = parsed.message;
+        }
+      } catch {}
+      lastError = `${PROVIDERS[p].label} ${res.status}: ${errMsg}`;
+      if (res.status === 401 || res.status === 403 || /api key|pass a valid api key/i.test(text)) {
+        throw new ProviderError('bad_key', `${PROVIDERS[p].label}: Invalid or missing API key. Please check your key in Settings.`);
+      }
       // Automatically recover from high demand / 503 / 429 spikes on Gemini
       if (p === 'gemini' && adjustments < 5 && (res.status === 503 || res.status === 429 || /high demand|unavailable|overloaded|resource exhausted/i.test(text))) {
         adjustments++;
@@ -415,7 +440,20 @@ export async function listModels(settings: AppSettings, p: ProviderId): Promise<
   const get = async (url: string, headers: Record<string, string> = {}) => {
     const res = await fetch(url, { headers: { Accept: 'application/json', ...headers }, signal: AbortSignal.timeout(10_000) });
     const text = await res.text();
-    if (!res.ok) throw new ProviderError(res.status === 401 || res.status === 403 ? 'bad_key' : 'provider_error', `${res.status}: ${text.slice(0, 200)}`);
+    if (!res.ok) {
+      if (res.status === 401 || res.status === 403 || /api key|pass a valid api key/i.test(text)) {
+        throw new ProviderError('bad_key', `${PROVIDERS[p].label}: Invalid or missing API key. Please check your key in Settings.`);
+      }
+      if (res.status === 404) throw new ProviderError('unreachable', `${PROVIDERS[p].label}: endpoint not found (404) at ${base}`);
+      let errMsg = text.slice(0, 200);
+      try {
+        const parsed = JSON.parse(text);
+        if (Array.isArray(parsed) && parsed[0]?.error?.message) errMsg = parsed[0].error.message;
+        else if (parsed?.error?.message) errMsg = parsed.error.message;
+        else if (parsed?.message) errMsg = parsed.message;
+      } catch {}
+      throw new ProviderError('provider_error', `${PROVIDERS[p].label}: ${res.status} ${errMsg}`);
+    }
     try {
       return JSON.parse(text);
     } catch {

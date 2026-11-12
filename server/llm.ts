@@ -13,6 +13,12 @@ type Pitch = { title: string; pitch: string };
 type Flow = { system: string; expand: string; combine: string };
 type BoardCtx = { goal: string };
 export type Judgement = { originality: number; feasibility: number; impact: number; reason: string; keywords: string[] };
+export type Critique = {
+  friction: string;
+  economics: string;
+  technical: string;
+  verdict: string;
+};
 
 /** One canonical form so "Public Spaces" and "public space" count as one trend. */
 export function normalizeKeywords(raw: unknown): string[] {
@@ -25,6 +31,18 @@ export function normalizeKeywords(raw: unknown): string[] {
 }
 
 // ---------------------------------------------------------------- schemas
+
+const CRITIQUE_SCHEMA = {
+  type: 'object',
+  properties: {
+    friction: { type: 'string', description: 'Customer adoption barrier: why target users will resist or refuse to switch (1-2 concise sentences).' },
+    economics: { type: 'string', description: 'Business & unit economics trap: hidden costs, CAC/LTV imbalance, or market margin killer (1-2 concise sentences).' },
+    technical: { type: 'string', description: 'Technical/operational failure point: where implementation or edge cases break in production (1-2 concise sentences).' },
+    verdict: { type: 'string', description: 'One-sentence brutal verdict of the single biggest risk.' },
+  },
+  required: ['friction', 'economics', 'technical', 'verdict'],
+  additionalProperties: false,
+};
 
 const PITCH_PROPS = {
   title: { type: 'string', description: 'A concrete name for the idea, 2–6 words. No quotes, no trailing period.' },
@@ -355,6 +373,32 @@ export function makeLLM(chat: ChatFn) {
         keywords: normalizeKeywords(value?.keywords),
       };
       return { judgement, costUsd };
+    },
+
+    /** Devil's Advocate / Stress Test critique to surface hidden failure modes. */
+    async critique(a: { model: string; idea: Pitch; goal?: string }) {
+      const system = "You are a ruthless, world-class venture stress-tester and devil's advocate. Your job is to identify the critical failure modes, adoption blockers, and unit economics traps in product ideas. Be sharp, concrete, and concise.";
+      const user = [
+        a.goal ? `Project Goal: ${a.goal}` : '',
+        `Idea Concept:\nTitle: ${a.idea.title}\nPitch: ${a.idea.pitch}`,
+        'Perform a brutal, realistic stress-test analysis of this concept across adoption friction, economics traps, and technical failure points.',
+      ].filter(Boolean).join('\n\n');
+      const { value, costUsd } = await chat({
+        model: a.model,
+        system,
+        user,
+        schemaName: 'critique',
+        schema: CRITIQUE_SCHEMA,
+        temperature: 0.6,
+        maxTokens: 600,
+      });
+      const critique: Critique = {
+        friction: String(value?.friction ?? '').trim(),
+        economics: String(value?.economics ?? '').trim(),
+        technical: String(value?.technical ?? '').trim(),
+        verdict: String(value?.verdict ?? '').trim(),
+      };
+      return { critique, costUsd };
     },
   };
 }
